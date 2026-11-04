@@ -1,0 +1,60 @@
+<section class="gachireai-section" id="gachireai-logs">
+	<header class="gachireai-section__header">
+		<h2 class="gachireai-section__title">{$logs_title}</h2>
+	</header>
+	<div class="gachireai-section__main">
+		<div class="gachireai-block">
+			<div class="gachireai-block__main">
+				?$logs
+				<ul class="gachireai-logs">
+				[$logs]
+				<li class="{$log_item_class}">
+					<span class="gachireai-log__time">{$log_time}</span>
+					<span class="{$log_badge_class}">{$log_level_label}</span>
+					<span class="gachireai-log__type">{$log_type_label}</span>
+					<span class="gachireai-log__text">{$log_text}</span>
+				</li>
+				[/$logs]
+				</ul>
+				?$logs_pagination
+				<nav class="gachireai-logs-pager" aria-label="実行ログのページ送り">
+					<span class="gachireai-logs-pager__summary">{$logs_pager_summary}</span>
+					<span class="gachireai-logs-pager__links">
+						?$logs_pager_prev_url
+						<a class="gachireai-logs-pager__page gachireai-logs-pager__prev" href="{$logs_pager_prev_url}">← 前へ</a>
+						$logs_pager_prev_url?
+						!$logs_pager_prev_url
+						<span class="gachireai-logs-pager__page gachireai-logs-pager__prev is-disabled">← 前へ</span>
+						$logs_pager_prev_url!
+						?$logs_pages
+						[$logs_pages]
+						?$page_current
+						<span class="gachireai-logs-pager__page is-current" aria-current="page">{$page_label}</span>
+						$page_current?
+						!$page_current
+						?$page_url
+						<a class="gachireai-logs-pager__page" href="{$page_url}">{$page_label}</a>
+						$page_url?
+						!$page_url
+						<span class="gachireai-logs-pager__gap">{$page_label}</span>
+						$page_url!
+						$page_current!
+						[/$logs_pages]
+						$logs_pages?
+						?$logs_pager_next_url
+						<a class="gachireai-logs-pager__page gachireai-logs-pager__next" href="{$logs_pager_next_url}">次へ →</a>
+						$logs_pager_next_url?
+						!$logs_pager_next_url
+						<span class="gachireai-logs-pager__page gachireai-logs-pager__next is-disabled">次へ →</span>
+						$logs_pager_next_url!
+					</span>
+				</nav>
+				$logs_pagination?
+				$logs?
+				!$logs
+				<p class="description">{$logs_empty}</p>
+				$logs!
+			</div>
+		</div>
+	</div>
+</section>

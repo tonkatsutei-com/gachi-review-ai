@@ -1,0 +1,61 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	<noscript>
+		?$js_notice
+		[$js_notice]
+		{% partials/notice.dv %}
+		[/$js_notice]
+		$js_notice?
+	</noscript>
+	{% partials/license.dv %}
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$progress_title}</h2>
+			?$progress_intro
+			<p class="gachireai-section__desc">{$progress_intro}</p>
+			$progress_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					?$progress_tabs
+					[$progress_tabs]
+					<details class="gachireai-progress-group" ?$progress_tab_open open$progress_tab_open?>
+						<summary class="gachireai-progress-tab"><span class="gachireai-progress-tab__label">{$progress_tab_label}</span><span class="gachireai-progress-tab__state">?$progress_tab_complete<span class="dashicons dashicons-yes-alt" aria-label="完了"></span>$progress_tab_complete??$progress_tab_incomplete<span class="dashicons dashicons-no" aria-label="未完"></span>$progress_tab_incomplete?</span></summary>
+						<table class="widefat striped gachireai-progress-table">
+							<thead>
+								<tr>
+									<th scope="col">{$progress_item}</th>
+									<th scope="col">{$progress_required}</th>
+									<th scope="col">{$progress_saved}</th>
+									<th scope="col">{$progress_note}</th>
+								</tr>
+							</thead>
+							<tbody>
+								?$progress_sections
+								[$progress_sections]
+								<tr>
+									<td class="gachireai-progress-name"><a href="{$section_url}">{$section_label}</a></td>
+									<td class="gachireai-progress-mark">?$section_marker<span class="dashicons dashicons-marker" aria-label="必須"></span>$section_marker??$section_footnote<span class="gachireai-progress-footnote">{$section_footnote}</span>$section_footnote?</td>
+									<td class="gachireai-progress-mark">?$section_saved<span class="dashicons dashicons-yes-alt" aria-label="保存済み"></span>$section_saved?
+									?$section_warning<span class="dashicons dashicons-warning" aria-label="未保存"></span>$section_warning?</td>
+									?$section_note_cell
+									<td class="gachireai-progress-note" ?$section_rowspan rowspan="{$section_span}"$section_rowspan?>?$section_note_mark<span class="gachireai-progress-footnote">{$section_note_mark}</span>$section_note_mark?{$section_note}</td>
+									$section_note_cell?
+								</tr>
+								[/$progress_sections]
+								$progress_sections?
+							</tbody>
+						</table>
+					</details>
+					[/$progress_tabs]
+					$progress_tabs?
+				</div>
+			</div>
+		</div>
+	</section>
+	{% partials/generate-post.dv %}
+	{% partials/logs.dv %}
+	{% partials/license-matrix.dv %}
+</div>

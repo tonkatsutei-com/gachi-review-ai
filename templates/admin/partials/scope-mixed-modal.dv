@@ -1,0 +1,19 @@
+?$scope_mixed
+<div class="gachireai-modal gachireai-modal--reset" data-gachireai-scope-dialog>
+	<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-scope-mixed-title">
+		<h3 class="gachireai-modal__title" id="gachireai-scope-mixed-title">{$scope_mixed_title}</h3>
+		<p class="gachireai-modal__desc">{$scope_mixed_desc}</p>
+		?$scope_mixed_rows
+		<ul class="gachireai-modal__list">
+			[$scope_mixed_rows]
+			<li>{$item_label}</li>
+			[/$scope_mixed_rows]
+		</ul>
+		$scope_mixed_rows?
+		<p class="gachireai-modal__actions">
+			<button type="submit" class="button button-primary" name="{$scope_mixed_confirm_name}" value="1" data-gachireai-ajax="{$scope_mixed_save_action}" data-gachireai-scope-submit>{$scope_mixed_submit_label}</button>
+			<button type="button" class="button" data-gachireai-scope-cancel>{$scope_mixed_cancel_label}</button>
+		</p>
+	</div>
+</div>
+$scope_mixed?

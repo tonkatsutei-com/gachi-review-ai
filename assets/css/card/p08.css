@@ -1,0 +1,37 @@
+
+.gachireai-affiliate--p08 .gachireai-affiliate__card {
+	min-height: 16rem;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__main {
+	justify-content: flex-end;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__media {
+	position: absolute;
+	inset: 0;
+	flex: none;
+	max-width: none;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__image {
+	height: 100%;
+	aspect-ratio: auto;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__body {
+	position: relative;
+	z-index: 1;
+	color: #fff;
+	background: linear-gradient(to top, rgba(17, 24, 39, 0.9), rgba(17, 24, 39, 0.15));
+	padding: 1.25rem;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__name,
+.gachireai-affiliate--p08 .gachireai-affiliate__price {
+	color: #fff;
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__price-note {
+	color: rgba(255, 255, 255, 0.85);
+}
+.gachireai-affiliate--p08 .gachireai-affiliate__searches {
+	position: relative;
+	z-index: 1;
+	padding: 0 1.25rem 1.25rem;
+	background: rgba(17, 24, 39, 0.9);
+}

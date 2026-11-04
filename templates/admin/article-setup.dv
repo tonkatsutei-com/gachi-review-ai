@@ -1,0 +1,8 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	{% partials/article-settings.dv %}
+	{% partials/auto-post-settings.dv %}
+	{% partials/form-sections.dv %}
+	{% partials/card-settings.dv %}
+</div>

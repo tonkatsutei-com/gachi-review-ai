@@ -1,0 +1,123 @@
+
+<form method="post" action="{$site_create_form_action}">
+	?$site_create_hidden_fields
+	[$site_create_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$site_create_hidden_fields]
+	$site_create_hidden_fields?
+	<div class="gachireai-block">
+		<div class="gachireai-block__main">
+			<table class="form-table" role="presentation">
+				<tr class="gachireai-field">
+					<th scope="row">
+						<label for="{$site_create_theme_name}">{$site_create_theme_label}</label>
+						<div class="gachireai-field__actions gachireai-field__actions--header">
+							<button type="submit" name="{$site_create_propose_name}" value="1" class="button"><span class="gachireai-icon gachireai-icon--robot"></span>{$site_create_propose_label}</button>
+						</div>
+					</th>
+					<td>
+						<input type="text" id="{$site_create_theme_name}" name="{$site_create_theme_name}" value="{$site_create_theme_value}" class="large-text">
+						<p class="description gachireai-field__desc--preline">{$site_create_theme_desc}</p>
+						?$site_create_theme_candidates
+						<div class="gachireai-candidates">
+							<p class="description">{$site_create_theme_candidates_label}</p>
+							[$site_create_theme_candidates]
+							<label class="gachireai-candidate"><input type="radio" name="gachireai_theme_pick" value="{$cand_value}" data-target="{$site_create_theme_name}"><span>{$cand_value}</span></label>
+							[/$site_create_theme_candidates]
+						</div>
+						$site_create_theme_candidates?
+					</td>
+				</tr>
+				<tr class="gachireai-field">
+					<th scope="row">{$site_create_ec_label}</th>
+					<td>
+						<div class="gachireai-choices" role="radiogroup" aria-label="{$site_create_ec_label}">
+							?$site_create_ec_options
+							[$site_create_ec_options]
+							<label class="gachireai-choice"><input type="radio" name="{$site_create_ec_name}" value="{$opt_value}" ?$opt_selected checked$opt_selected?><span>{$opt_label}</span></label>
+							[/$site_create_ec_options]
+							$site_create_ec_options?
+						</div>
+					</td>
+				</tr>
+				<tr class="gachireai-field">
+					<th scope="row">{$site_create_type_label}</th>
+					<td>
+						<div class="gachireai-choices" role="radiogroup" aria-label="{$site_create_type_label}">
+							?$site_create_type_options
+							[$site_create_type_options]
+							<label class="gachireai-choice"><input type="radio" name="{$site_create_type_name}" value="{$opt_value}" ?$opt_selected checked$opt_selected?><span>{$opt_label}</span></label>
+							[/$site_create_type_options]
+							$site_create_type_options?
+						</div>
+					</td>
+				</tr>
+				<tr class="gachireai-field">
+					<th scope="row">{$site_create_article_label}</th>
+					<td>
+						<div class="gachireai-choices" role="radiogroup" aria-label="{$site_create_article_label}">
+							?$site_create_article_options
+							[$site_create_article_options]
+							<label class="gachireai-choice"><input type="radio" name="{$site_create_article_name}" value="{$opt_value}" ?$opt_selected checked$opt_selected?><span>{$opt_label}</span></label>
+							[/$site_create_article_options]
+							$site_create_article_options?
+						</div>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<div class="gachireai-section__footer">
+		<div class="gachireai-section__actions">
+			<button type="submit" class="button" ?$site_create_generate_action data-gachireai-site-generate="{$site_create_generate_action}"$site_create_generate_action?><span class="gachireai-icon gachireai-icon--robot"></span>{$site_create_submit_label}</button>
+		</div>
+		<div class="gachireai-section__messages">
+			?$site_create_messages
+			[$site_create_messages]
+			<div class="notice notice-{$msg_type}"><p class="gachireai-notice--preline">{$msg_text}</p></div>
+			[/$site_create_messages]
+			$site_create_messages?
+		</div>
+	</div>
+	?$site_create_result_lines
+	<div class="gachireai-block">
+		<div class="gachireai-block__header">
+			<h3 class="gachireai-block__title">生成結果</h3>
+		</div>
+		<div class="gachireai-block__main">
+			<table class="form-table" role="presentation">
+				[$site_create_result_lines]
+				<tr class="gachireai-field">
+					<th scope="row">{$result_label}</th>
+					<td>
+						?$result_url
+						<a href="{$result_url}" target="_blank" rel="noopener noreferrer">{$result_value}</a>
+						$result_url?
+						!$result_url
+						<span>{$result_value}</span>
+						$result_url!
+					</td>
+				</tr>
+				[/$site_create_result_lines]
+			</table>
+		</div>
+	</div>
+	$site_create_result_lines?
+	<dialog class="gachireai-ai-overlay" data-gachireai-site-overlay data-gachireai-site-overlay-total="{$site_create_overlay_total}">
+		<div class="gachireai-ai-overlay__panel" role="status" aria-live="polite">
+			<div class="gachireai-ai-overlay__robot"><span class="gachireai-icon gachireai-icon--robot"></span></div>
+			<p class="gachireai-ai-overlay__title">{$site_create_overlay_title}</p>
+			<div class="gachireai-ai-overlay__dots">
+				?$site_create_overlay_dots
+				[$site_create_overlay_dots]
+				<span class="gachireai-ai-overlay__dot" data-gachireai-site-overlay-dot="{$dot_index}"></span>
+				[/$site_create_overlay_dots]
+				$site_create_overlay_dots?
+			</div>
+			<p class="gachireai-ai-overlay__fraction" data-gachireai-site-overlay-fraction><span data-gachireai-site-overlay-num>{$site_create_overlay_initial_phase}</span><span class="gachireai-ai-overlay__slash">/</span><span data-gachireai-site-overlay-total>{$site_create_overlay_total}</span></p>
+			<p class="gachireai-ai-overlay__label" data-gachireai-site-overlay-label>{$site_create_overlay_initial_label}</p>
+			<p class="gachireai-ai-overlay__retry" data-gachireai-site-overlay-retry hidden>{$site_create_overlay_retry_label}</p>
+			<button type="button" class="button gachireai-ai-overlay__abort" data-gachireai-site-overlay-abort>{$site_create_overlay_abort_label}</button>
+		</div>
+	</dialog>
+</form>

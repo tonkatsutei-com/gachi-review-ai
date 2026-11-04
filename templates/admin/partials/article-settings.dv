@@ -1,0 +1,41 @@
+<form method="post" action="{$article_form_action}">
+	?$article_hidden_fields
+	[$article_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$article_hidden_fields]
+	$article_hidden_fields?
+	<section class="gachireai-section" ?$article_anchor id="gachireai-section-{$article_anchor}"$article_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$article_title}</h2>
+			?$article_intro
+			<p class="gachireai-section__desc">{$article_intro}</p>
+			$article_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$article_fields
+						[$article_fields]
+						{% partials/field.dv %}
+						[/$article_fields]
+						$article_fields?
+					</table>
+					{% partials/dialogue-settings.dv %}
+				</div>
+			</div>
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary" ?$article_submit_action data-gachireai-ajax="{$article_submit_action}"$article_submit_action?>{$article_submit_label}</button>
+			</div>
+			<div class="gachireai-section__messages">
+				?$article_messages
+				[$article_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$article_messages]
+				$article_messages?
+			</div>
+		</footer>
+	</section>
+</form>

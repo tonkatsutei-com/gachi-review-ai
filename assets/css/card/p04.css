@@ -1,0 +1,8 @@
+
+.gachireai-affiliate--p04 .gachireai-affiliate__card {
+	border-left: 5px solid var(--gachireai-accent);
+}
+.gachireai-affiliate--p04 .gachireai-affiliate__price {
+	font-size: 1.7rem;
+	line-height: 1.2;
+}

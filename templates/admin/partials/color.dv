@@ -1,0 +1,18 @@
+
+<div class="gachireai-color">
+	<input type="text" id="{$name}" name="{$name}" value="{$value}" class="gachireai-color__text regular-text" ?$placeholder placeholder="{$placeholder}"$placeholder?>
+	<button type="button" class="gachireai-color__toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="{$label}">▼</button>
+	<input type="color" class="gachireai-color__picker" value="{$color_value}" aria-label="{$label}">
+	<ul class="gachireai-color__list" role="listbox" aria-label="{$label}" hidden>
+		?$color_options
+		[$color_options]
+		<li class="gachireai-color__option" role="option" data-gachireai-color-value="{$opt_value}" ?$opt_hex data-gachireai-color-hex="{$opt_hex}"$opt_hex?>
+			?$opt_hex
+			<span class="gachireai-color__swatch" style="background:{$opt_hex};" aria-hidden="true"></span>
+			$opt_hex?
+			<span class="gachireai-color__label">{$opt_label}</span>
+		</li>
+		[/$color_options]
+		$color_options?
+	</ul>
+</div>

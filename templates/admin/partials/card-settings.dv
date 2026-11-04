@@ -1,0 +1,81 @@
+
+<form method="post" action="{$card_form_action}" data-gachireai-card-form="1" ?$card_preview_classes class="{$card_preview_classes}"$card_preview_classes?>
+	?$card_hidden_fields
+	[$card_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$card_hidden_fields]
+	$card_hidden_fields?
+	<section class="gachireai-section" ?$card_anchor id="gachireai-section-{$card_anchor}"$card_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$card_title}</h2>
+			?$card_intro
+			<p class="gachireai-section__desc">{$card_intro}</p>
+			$card_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-block">
+				<h3 class="gachireai-block__title">{$card_style_title}</h3>
+				<div class="gachireai-block__main">
+					<details class="gachireai-cardgroup">
+						<summary class="gachireai-cardgroup__title">{$card_style_summary}</summary>
+						<div class="gachireai-cardgroup__body">
+							?$card_style_note
+							<p class="gachireai-cardgroup__note">{$card_style_note}</p>
+							$card_style_note?
+							?$card_styles
+							<div class="gachireai-cardgroup__styles">
+								[$card_styles]
+								<div class="gachireai-cardstyle ?$style_disabled gachireai-cardstyle--disabled$style_disabled?">
+									<div class="gachireai-cardstyle__head">
+										<input type="radio" id="{$style_id}" name="{$card_pattern_name}" value="{$style_value}" ?$style_checked checked$style_checked? ?$style_disabled disabled$style_disabled?>
+										<label class="gachireai-cardstyle__name" for="{$style_id}">{$style_label}</label>
+									</div>
+									<div class="gachireai-cardstyle__preview">{$style_preview}</div>
+								</div>
+								[/$card_styles]
+							</div>
+							$card_styles?
+						</div>
+					</details>
+					?$card_current_preview
+					<div class="gachireai-cardgroup__current">
+						<p class="gachireai-cardgroup__current-label">{$card_current_label}</p>
+						<div class="gachireai-cardstyle__preview">{$card_current_preview}</div>
+					</div>
+					$card_current_preview?
+				</div>
+			</div>
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					{% partials/card-toggle-grid.dv %}
+					?$card_color_note
+					<p class="description">{$card_color_note}</p>
+					$card_color_note?
+				</div>
+			</div>
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$card_positions
+						[$card_positions]
+						{% partials/field.dv %}
+						[/$card_positions]
+						$card_positions?
+					</table>
+				</div>
+			</div>
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary" ?$card_submit_action data-gachireai-ajax="{$card_submit_action}"$card_submit_action?>{$card_submit_label}</button>
+			</div>
+			<div class="gachireai-section__messages">
+				?$card_messages
+				[$card_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$card_messages]
+				$card_messages?
+			</div>
+		</footer>
+	</section>
+</form>

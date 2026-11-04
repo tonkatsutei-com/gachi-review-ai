@@ -1,0 +1,26 @@
+
+?$card_grid
+<table class="gachireai-cardgrid">
+	[$card_grid]
+	<tr>
+		?$is_first
+		<th class="gachireai-cardgrid__heading" rowspan="{$rowspan}"><h3 class="gachireai-cardgrid__title">{$heading}</h3></th>
+		$is_first?
+		<th class="gachireai-cardgrid__label">{$label}</th>
+		<td class="gachireai-cardgrid__control">
+			?$is_color
+			{% partials/color.dv %}
+			$is_color?
+			?$checks
+			[$checks]
+			<label class="gachireai-cardgrid__check ?$check_disabled gachireai-cardgrid__check--disabled$check_disabled?">
+				<input type="checkbox" name="{$check_name}" value="1" ?$check_checked checked$check_checked? ?$check_disabled disabled$check_disabled?>
+				<span>{$check_label}</span>
+			</label>
+			[/$checks]
+			$checks?
+		</td>
+	</tr>
+	[/$card_grid]
+</table>
+$card_grid?

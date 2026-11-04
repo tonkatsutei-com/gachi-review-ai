@@ -1,0 +1,55 @@
+<form method="post" action="{$static_pages_form_action}">
+	?$static_pages_hidden_fields
+	[$static_pages_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$static_pages_hidden_fields]
+	$static_pages_hidden_fields?
+	<section class="gachireai-section" ?$static_pages_anchor id="gachireai-section-{$static_pages_anchor}"$static_pages_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$static_pages_title}</h2>
+			?$static_pages_intro
+			<p class="gachireai-section__desc">{$static_pages_intro}</p>
+			$static_pages_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-block">
+				<h3 class="gachireai-block__title">{$static_pages_top_title}</h3>
+				<div class="gachireai-block__main">
+					<p class="description">{$static_pages_top_text}</p>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__actions">
+						<button type="submit" class="button" ?$static_pages_generate_top_action data-gachireai-ajax="{$static_pages_generate_top_action}"$static_pages_generate_top_action?>{$static_pages_generate_top_label}</button>
+					</div>
+					<div class="gachireai-block__messages">
+						?$static_pages_top_messages
+						[$static_pages_top_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_links
+						&#32;[$msg_links]<span class="gachireai-notice__link"><a href="{$url}" target="_blank" rel="noopener noreferrer">{$label}</a></span>[/$msg_links]$msg_links?</p></div>
+						[/$static_pages_top_messages]
+						$static_pages_top_messages?
+					</div>
+				</div>
+			</div>
+			<div class="gachireai-block">
+				<h3 class="gachireai-block__title">{$static_pages_policy_title}</h3>
+				<div class="gachireai-block__main">
+					<p class="description">{$static_pages_policy_text}</p>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__actions">
+						<button type="submit" class="button" ?$static_pages_generate_policy_action data-gachireai-ajax="{$static_pages_generate_policy_action}"$static_pages_generate_policy_action?>{$static_pages_generate_policy_label}</button>
+					</div>
+					<div class="gachireai-block__messages">
+						?$static_pages_policy_messages
+						[$static_pages_policy_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_links
+						&#32;[$msg_links]<span class="gachireai-notice__link"><a href="{$url}" target="_blank" rel="noopener noreferrer">{$label}</a></span>[/$msg_links]$msg_links?</p></div>
+						[/$static_pages_policy_messages]
+						$static_pages_policy_messages?
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+</form>

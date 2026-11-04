@@ -1,0 +1,24 @@
+<tr class="gachireai-eyecatch-group">
+	<th scope="row">{$el_label}</th>
+	<td>
+		<div class="gachireai-font__preview" data-gachireai-font-preview-box>
+			<img class="gachireai-font__preview-image" data-gachireai-font-preview-image alt="" ?$font_preview_image_url src="{$font_preview_image_url}"$font_preview_image_url?>
+			<span class="gachireai-font__preview-loading">{$font_preview_loading}</span>
+		</div>
+		<table class="form-table gachireai-eyecatch-group__table" role="presentation">
+			?$group_items
+			[$group_items]
+			?$el_is_font
+			{% partials/font-field.dv %}
+			$el_is_font?
+			?$el_is_image
+			{% partials/field.dv %}
+			$el_is_image?
+			?$el_is_field
+			{% partials/field.dv %}
+			$el_is_field?
+			[/$group_items]
+			$group_items?
+		</table>
+	</td>
+</tr>

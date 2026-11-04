@@ -1,0 +1,59 @@
+<div class="gachireai-dialogue" data-gachireai-depends="article_type" data-gachireai-value="dialogue" hidden>
+	<h3 class="gachireai-dialogue__title">対話型の設定</h3>
+	<p class="description">{$dialogue_note}</p>
+	<fieldset class="gachireai-dialogue__group">
+		<legend class="gachireai-dialogue__legend">メンター（マイペルソナ）</legend>
+		<p class="description">プロフィール画像をそのまま使用します（「サイト設定」タブの「サイト画像」で設定できます）。</p>
+		<div class="gachireai-image">
+			<div class="gachireai-image__preview">
+				?$dialogue_mentor_image_url
+				<img src="{$dialogue_mentor_image_url}" alt="">
+				$dialogue_mentor_image_url?
+			</div>
+		</div>
+	</fieldset>
+	<fieldset class="gachireai-dialogue__group" ?$dialogue_locked disabled$dialogue_locked?>
+		<legend class="gachireai-dialogue__legend">メンティー（ターゲットペルソナから生成）</legend>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="gachireai-dialogue-mentee-name">名前</label></th>
+				<td><input type="text" id="gachireai-dialogue-mentee-name" name="article[dialogue][mentee][name]" value="{$dialogue_mentee_name}" class="regular-text" readonly></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="gachireai-dialogue-mentee-gender">性別</label></th>
+				<td><input type="text" id="gachireai-dialogue-mentee-gender" name="article[dialogue][mentee][gender]" value="{$dialogue_mentee_gender}" class="regular-text" readonly></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="gachireai-dialogue-mentee-age">年齢</label></th>
+				<td><input type="text" id="gachireai-dialogue-mentee-age" name="article[dialogue][mentee][age]" value="{$dialogue_mentee_age}" class="regular-text" readonly></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="gachireai-dialogue-mentee-tone">口調</label></th>
+				<td><input type="text" id="gachireai-dialogue-mentee-tone" name="article[dialogue][mentee][tone]" value="{$dialogue_mentee_tone}" class="regular-text" readonly></td>
+			</tr>
+			<tr>
+				<th scope="row">画像</th>
+				<td>
+					<div class="gachireai-image">
+						<input type="hidden" name="article[dialogue][mentee][image]" value="{$dialogue_mentee_image_id}" data-gachireai-image-input>
+						<div class="gachireai-image__preview" data-gachireai-image-preview-box>
+							?$dialogue_mentee_image_url
+							<img src="{$dialogue_mentee_image_url}" alt="" data-gachireai-image-preview>
+							$dialogue_mentee_image_url?
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+		<p class="gachireai-image__actions">
+			<button type="submit" class="button" name="gachireai_generate_dialogue_mentee" value="1" ?$dialogue_locked disabled$dialogue_locked? data-gachireai-ajax="{$dialogue_generate_mentee_action}">{% partials/button-icon.dv %}{$dialogue_generate_mentee_label}</button>
+		</p>
+		?$dialogue_messages
+		<div class="gachireai-dialogue__messages">
+			[$dialogue_messages]
+			<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+			[/$dialogue_messages]
+		</div>
+		$dialogue_messages?
+	</fieldset>
+</div>

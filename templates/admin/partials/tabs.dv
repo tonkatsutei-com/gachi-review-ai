@@ -1,0 +1,7 @@
+<nav class="nav-tab-wrapper gachireai-tabs">
+	?$tabs
+	[$tabs]
+	<a class="nav-tab ?$tab_active nav-tab-active$tab_active?" href="{$tab_url}">{$tab_label}</a>
+	[/$tabs]
+	$tabs?
+</nav>

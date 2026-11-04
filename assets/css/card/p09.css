@@ -1,0 +1,18 @@
+
+.gachireai-affiliate--p09 .gachireai-affiliate__card {
+	border-width: 2px;
+	border-color: var(--gachireai-accent);
+}
+.gachireai-affiliate--p09 .gachireai-affiliate__main {
+	flex-direction: column;
+}
+.gachireai-affiliate--p09 .gachireai-affiliate__media {
+	flex: none;
+	max-width: 100%;
+}
+.gachireai-affiliate--p09 .gachireai-affiliate__image {
+	aspect-ratio: 16 / 9;
+}
+.gachireai-affiliate--p09 .gachireai-affiliate__search {
+	flex: 1 1 auto;
+}

@@ -1,0 +1,6 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	{% partials/license.dv %}
+	{% partials/site-create.dv %}
+</div>

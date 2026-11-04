@@ -1,0 +1,23 @@
+?$eyecatch_has_image
+<p class="gachireai-image__preview"><img src="{$eyecatch_image_url}" alt=""></p>
+$eyecatch_has_image?
+!$eyecatch_has_image
+<p class="description">未設定</p>
+$eyecatch_has_image!
+<form method="post" action="{$eyecatch_action_url}">
+	?$eyecatch_hidden_fields
+	[$eyecatch_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$eyecatch_hidden_fields]
+	$eyecatch_hidden_fields?
+	<p><button type="submit" class="button button-primary" ?$eyecatch_disabled disabled$eyecatch_disabled?>{$eyecatch_button_label}</button></p>
+</form>
+<p class="description">{$eyecatch_note}</p>
+?$eyecatch_disabled
+<p class="description"><a href="{$eyecatch_settings_url}">画像設定を開く</a></p>
+$eyecatch_disabled?
+?$eyecatch_messages
+[$eyecatch_messages]
+<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+[/$eyecatch_messages]
+$eyecatch_messages?

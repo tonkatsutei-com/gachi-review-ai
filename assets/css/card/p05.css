@@ -1,0 +1,22 @@
+
+.gachireai-affiliate--p05 .gachireai-affiliate__card {
+	border-left: 6px solid var(--gachireai-accent);
+	border-radius: 8px;
+	box-shadow: none;
+}
+.gachireai-affiliate--p05 .gachireai-affiliate__main {
+	flex-direction: column;
+}
+.gachireai-affiliate--p05 .gachireai-affiliate__body {
+	gap: 0.65rem;
+	padding: 1.25rem;
+}
+.gachireai-affiliate--p05 .gachireai-affiliate__name {
+	font-size: 1.05rem;
+}
+.gachireai-affiliate--p05 .gachireai-affiliate__searches {
+	padding: 0 1.25rem 1.25rem;
+}
+.gachireai-affiliate--p05 .gachireai-affiliate__search {
+	flex: 1 1 auto;
+}

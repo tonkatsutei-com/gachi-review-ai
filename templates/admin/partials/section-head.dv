@@ -1,0 +1,6 @@
+<header class="gachireai-section__header">
+	<h2 class="gachireai-section__title">{$title}</h2>
+	?$description
+	<p class="gachireai-section__desc">{$description}</p>
+	$description?
+</header>

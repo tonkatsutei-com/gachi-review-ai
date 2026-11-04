@@ -1,0 +1,236 @@
+
+:root {
+	--gachireai-robot-mask: url( "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDhWNCIvPjxyZWN0IHg9IjQiIHk9IjgiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxMiIgcng9IjMiLz48cGF0aCBkPSJNOSAxN2g2Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIzIiByPSIxLjMiIGZpbGw9IiMwMDAiIHN0cm9rZT0ibm9uZSIvPjxjaXJjbGUgY3g9IjkuMiIgY3k9IjEzIiByPSIxLjMiIGZpbGw9IiMwMDAiIHN0cm9rZT0ibm9uZSIvPjxjaXJjbGUgY3g9IjE0LjgiIGN5PSIxMyIgcj0iMS4zIiBmaWxsPSIjMDAwIiBzdHJva2U9Im5vbmUiLz48L3N2Zz4=" );
+}
+.gachireai-ai-generate .gachireai-ai-generate__actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.gachireai-ai-generate .gachireai-icon {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin: 0 4px 0 0;
+	background-color: currentColor;
+	vertical-align: text-bottom;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+}
+.gachireai-ai-generate .gachireai-icon--robot {
+	-webkit-mask-image: var(--gachireai-robot-mask);
+	mask-image: var(--gachireai-robot-mask);
+}
+.gachireai-ai-generate .gachireai-progress {
+	margin-left: 8px;
+	color: #646970;
+}
+.gachireai-ai-overlay {
+	position: fixed;
+	inset: 0;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	max-height: none;
+	margin: 0;
+	padding: 24px;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	overflow: auto;
+}
+.gachireai-ai-overlay[open] {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.gachireai-ai-overlay::backdrop {
+	background: rgba( 0, 0, 0, 0.72 );
+	-webkit-backdrop-filter: blur( 2px );
+	backdrop-filter: blur( 2px );
+}
+.gachireai-ai-overlay__panel {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 460px;
+	padding: 32px 28px 26px;
+	border-radius: 16px;
+	background: radial-gradient( circle at 50% 0%, #2b2d42 0%, #16171f 70% );
+	color: #fff;
+	text-align: center;
+	box-shadow: 0 24px 60px rgba( 0, 0, 0, 0.45 ), inset 0 1px 0 rgba( 255, 255, 255, 0.08 );
+	animation: gachireai-overlay-in 0.28s ease-out;
+}
+@keyframes gachireai-overlay-in {
+	from {
+		opacity: 0;
+		transform: translateY( 8px ) scale( 0.98 );
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+.gachireai-ai-overlay__robot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 64px;
+	height: 64px;
+	margin: 0 auto 14px;
+	border-radius: 50%;
+	background: rgba( 255, 255, 255, 0.08 );
+	animation: gachireai-robot-pulse 1.6s ease-in-out infinite;
+}
+.gachireai-ai-overlay__robot .gachireai-icon {
+	width: 32px;
+	height: 32px;
+	margin: 0;
+	background-color: #fff;
+}
+@keyframes gachireai-robot-pulse {
+	0%,
+	100% {
+		transform: scale( 1 );
+		box-shadow: 0 0 0 0 rgba( 124, 196, 255, 0.35 );
+	}
+	50% {
+		transform: scale( 1.06 );
+		box-shadow: 0 0 0 14px rgba( 124, 196, 255, 0 );
+	}
+}
+.gachireai-ai-overlay__title {
+	margin: 0 0 18px;
+	padding: 0;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.5;
+	color: #e6e8f0;
+}
+.gachireai-ai-overlay__dots {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	justify-content: center;
+	margin: 0 0 14px;
+}
+.gachireai-ai-overlay__dot {
+	box-sizing: border-box;
+	width: 12px;
+	height: 12px;
+	border: 2px solid rgba( 255, 255, 255, 0.28 );
+	border-radius: 50%;
+	transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.gachireai-ai-overlay__dot.is-done {
+	border-color: #7cc4ff;
+	background: #7cc4ff;
+}
+.gachireai-ai-overlay__dot.is-current {
+	border-color: #ffd166;
+	background: #ffd166;
+	animation: gachireai-dot-current 1.2s ease-in-out infinite;
+}
+@keyframes gachireai-dot-current {
+	0%,
+	100% {
+		transform: scale( 1 );
+		box-shadow: 0 0 0 0 rgba( 255, 209, 102, 0.5 );
+	}
+	50% {
+		transform: scale( 1.3 );
+		box-shadow: 0 0 0 6px rgba( 255, 209, 102, 0 );
+	}
+}
+.gachireai-ai-overlay__fraction {
+	margin: 0 0 6px;
+	padding: 0;
+	font-size: 34px;
+	font-weight: 700;
+	line-height: 1.1;
+	letter-spacing: 0.02em;
+	font-variant-numeric: tabular-nums;
+}
+.gachireai-ai-overlay__slash {
+	padding: 0 6px;
+	font-weight: 400;
+	color: rgba( 255, 255, 255, 0.35 );
+}
+.gachireai-ai-overlay__fraction.is-bump {
+	animation: gachireai-fraction-bump 0.35s ease-out;
+}
+@keyframes gachireai-fraction-bump {
+	from {
+		transform: scale( 1.12 );
+	}
+	to {
+		transform: scale( 1 );
+	}
+}
+.gachireai-ai-overlay__label {
+	margin: 0;
+	padding: 0;
+	min-height: 1.4em;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #b8bccb;
+}
+.gachireai-ai-overlay__retry {
+	display: inline-block;
+	margin: 12px 0 0;
+	padding: 4px 12px;
+	border: 1px solid rgba( 255, 180, 60, 0.5 );
+	border-radius: 999px;
+	background: rgba( 255, 180, 60, 0.16 );
+	font-size: 12px;
+	font-weight: 600;
+	color: #ffcf7a;
+}
+.gachireai-ai-overlay__retry[hidden] {
+	display: none;
+}
+.gachireai-ai-overlay.is-retrying .gachireai-ai-overlay__panel {
+	animation: gachireai-retry-glow 1.2s ease-in-out infinite;
+}
+@keyframes gachireai-retry-glow {
+	0%,
+	100% {
+		box-shadow: 0 24px 60px rgba( 0, 0, 0, 0.45 ), inset 0 1px 0 rgba( 255, 255, 255, 0.08 );
+	}
+	50% {
+		box-shadow: 0 24px 60px rgba( 0, 0, 0, 0.45 ), 0 0 0 2px rgba( 255, 180, 60, 0.45 );
+	}
+}
+.gachireai-ai-overlay .gachireai-ai-overlay__abort {
+	margin: 16px 0 0;
+	padding: 4px 18px;
+	border: 1px solid rgba( 255, 255, 255, 0.28 );
+	border-radius: 6px;
+	background: transparent;
+	color: #dfe3ee;
+	font-size: 12px;
+	line-height: 1.8;
+	cursor: pointer;
+	transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+.gachireai-ai-overlay .gachireai-ai-overlay__abort:hover,
+.gachireai-ai-overlay .gachireai-ai-overlay__abort:focus {
+	border-color: #ff8a8a;
+	background: rgba( 255, 120, 120, 0.08 );
+	color: #ffb3b3;
+}
+@media ( prefers-reduced-motion: reduce ) {
+	.gachireai-ai-overlay__panel,
+	.gachireai-ai-overlay__robot,
+	.gachireai-ai-overlay__dot.is-current,
+	.gachireai-ai-overlay.is-retrying .gachireai-ai-overlay__panel,
+	.gachireai-ai-overlay__fraction.is-bump {
+		animation: none !important;
+	}
+}

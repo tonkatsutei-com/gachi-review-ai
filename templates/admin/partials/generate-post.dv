@@ -1,0 +1,142 @@
+
+?$generate_visible
+<form method="post" action="{$generate_form_action}">
+	?$generate_hidden_fields
+	[$generate_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$generate_hidden_fields]
+	$generate_hidden_fields?
+	<details class="gachireai-section gachireai-accordion">
+		<summary class="gachireai-section__header gachireai-accordion__summary">
+			<h2 class="gachireai-section__title">{$generate_title}</h2>
+			?$generate_enabled
+			<p class="gachireai-section__desc">{$generate_ready}</p>
+			$generate_enabled?
+			!$generate_enabled
+			<p class="gachireai-section__desc">{$generate_wait}</p>
+			$generate_enabled!
+		</summary>
+		<div class="gachireai-section__main">
+			?$bulk_enabled
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<p class="description">{$bulk_desc}</p>
+					<div class="gachireai-block__actions">
+						<button type="submit" name="{$bulk_name}" value="{$bulk_value}" class="button button-primary" data-gachireai-ajax="{$bulk_action}"><span class="gachireai-icon gachireai-icon--{$bulk_icon}"></span>{$bulk_label}</button>
+					</div>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__messages">
+						?$bulk_messages
+						[$bulk_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+						[/$bulk_messages]
+						$bulk_messages?
+						?$bulk_result
+						<p class="description">{$bulk_result_text}</p>
+						$bulk_result?
+						?$bulk_result_url
+						<p class="description"><a href="{$bulk_result_url}" target="_blank" rel="noreferrer">{$bulk_result_label}</a></p>
+						$bulk_result_url?
+					</div>
+				</div>
+			</div>
+			$bulk_enabled?
+			?$generate_steps
+			[$generate_steps]
+			<div class="gachireai-step">
+			<h3 class="gachireai-step__title">{$step_title}</h3>
+			?$step_button_rows
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					[$step_button_rows]
+					<div class="gachireai-step-row">
+						<div class="gachireai-step-row__label">{$row_label}</div>
+						<div class="gachireai-block__actions">
+							?$row_actions
+							[$row_actions]
+							<button type="submit" name="{$action_name}" value="{$action_value}" class="button button-primary" data-gachireai-ajax="{$action_action}" ?$action_disabled disabled="disabled"$action_disabled?>{% partials/button-icon.dv %}{$action_label}?$action_count<span class="gachireai-step-count">{$action_count}</span>$action_count?</button>
+							[/$row_actions]
+							$row_actions?
+						</div>
+					</div>
+					[/$step_button_rows]
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__messages">
+						?$step_messages
+						[$step_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+						[/$step_messages]
+						$step_messages?
+						?$step_review_lines
+						[$step_review_lines]
+						<div class="gachireai-result-line ?$line_zero gachireai-result-line--zero$line_zero?">{$line_text}</div>
+						[/$step_review_lines]
+						$step_review_lines?
+						<div class="gachireai-step-clear-row">
+							<select class="gachireai-step-clear-select" name="{$step_clear_name}">
+								?$step_clear_options
+								[$step_clear_options]
+								<option value="{$option_value}" ?$option_selected selected="selected"$option_selected?>{$option_label}</option>
+								[/$step_clear_options]
+								$step_clear_options?
+							</select>
+							<button type="button" class="button gachireai-step-clear" data-gachireai-ajax="{$step_clear_action}"><span class="gachireai-icon gachireai-icon--trash"></span>{$step_clear_label}</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			$step_button_rows?
+			?$step_actions
+			[$step_actions]
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<div class="gachireai-block__actions">
+						<button type="submit" name="{$action_name}" value="{$action_value}" class="button button-primary" data-gachireai-ajax="{$action_action}" ?$action_disabled disabled="disabled"$action_disabled?>{% partials/button-icon.dv %}{$action_label}</button>
+					</div>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__messages">
+						?$action_messages
+						[$action_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_force
+						&#32;<button type="submit" class="button-link" data-gachireai-ajax="{$msg_force_action}">{$msg_force_label}</button>$msg_force?</p></div>
+						[/$action_messages]
+						$action_messages?
+						?$action_info
+						<div class="gachireai-step-info">
+							<span>{$action_info_text}?$action_info_link_url
+							&#32;<a href="{$action_info_link_url}" target="_blank" rel="noreferrer">{$action_info_link_label}</a>$action_info_link_url??$action_info_suffix
+							&#32;{$action_info_suffix}$action_info_suffix?</span>
+							?$action_mark_posted
+							<button type="button" class="button-link" data-gachireai-ajax="{$action_mark_posted_action}"><span class="gachireai-icon gachireai-icon--posted"></span>{$action_mark_posted_label}</button>
+							$action_mark_posted?
+							?$action_mark_excluded
+							<button type="button" class="button-link" data-gachireai-ajax="{$action_mark_excluded_action}"><span class="gachireai-icon gachireai-icon--excluded"></span>{$action_mark_excluded_label}</button>
+							$action_mark_excluded?
+							<button type="button" class="button-link gachireai-step-clear" name="{$action_clear_name}" value="{$action_key}" data-gachireai-ajax="{$action_clear_action}"><span class="gachireai-icon gachireai-icon--trash"></span>{$action_clear_label}</button>
+						</div>
+						$action_info?
+						?$action_disabled_reason
+						<p class="description">{$action_disabled_reason}</p>
+						$action_disabled_reason?
+						?$action_result
+						<p class="description">{$action_result_text}</p>
+						$action_result?
+						?$action_result_url
+						<p class="description"><a href="{$action_result_url}">{$action_result_label}</a>?$action_preview_url
+						&#32;<a href="{$action_preview_url}" target="_blank" rel="noopener">{$action_preview_label}</a>$action_preview_url?</p>
+						$action_result_url?
+					</div>
+				</div>
+			</div>
+			[/$step_actions]
+			$step_actions?
+			</div>
+			[/$generate_steps]
+			$generate_steps?
+		</div>
+	</details>
+</form>
+$generate_visible?

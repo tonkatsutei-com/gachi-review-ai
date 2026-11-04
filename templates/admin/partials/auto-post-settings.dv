@@ -1,0 +1,40 @@
+<form method="post" action="{$auto_post_form_action}">
+	?$auto_post_hidden_fields
+	[$auto_post_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$auto_post_hidden_fields]
+	$auto_post_hidden_fields?
+	<section class="gachireai-section" ?$auto_post_anchor id="gachireai-section-{$auto_post_anchor}"$auto_post_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$auto_post_title}</h2>
+			?$auto_post_intro
+			<p class="gachireai-section__desc">{$auto_post_intro}</p>
+			$auto_post_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$auto_post_fields
+						[$auto_post_fields]
+						{% partials/field.dv %}
+						[/$auto_post_fields]
+						$auto_post_fields?
+					</table>
+				</div>
+			</div>
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary" ?$auto_post_submit_action data-gachireai-ajax="{$auto_post_submit_action}"$auto_post_submit_action?>{$auto_post_submit_label}</button>
+			</div>
+			<div class="gachireai-section__messages">
+				?$auto_post_messages
+				[$auto_post_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$auto_post_messages]
+				$auto_post_messages?
+			</div>
+		</footer>
+	</section>
+</form>

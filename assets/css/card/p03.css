@@ -1,0 +1,40 @@
+
+.gachireai-affiliate--p03 .gachireai-affiliate__title {
+	display: none;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__card {
+	border-radius: 8px;
+	box-shadow: none;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__main {
+	align-items: center;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__media {
+	flex: 0 0 64px;
+	max-width: 64px;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__body {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.6rem 0.9rem;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__name {
+	font-size: 0.9rem;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__price {
+	font-size: 0.95rem;
+	white-space: nowrap;
+	text-align: right;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__price-note {
+	white-space: normal;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__searches {
+	padding: 0 0.9rem 0.6rem;
+}
+.gachireai-affiliate--p03 .gachireai-affiliate__search {
+	padding: 0.3rem 0.6rem;
+	font-size: 0.78rem;
+}

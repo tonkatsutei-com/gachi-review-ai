@@ -1,0 +1,78 @@
+<form method="post" action="{$site_images_form_action}" enctype="multipart/form-data">
+	?$site_images_hidden_fields
+	[$site_images_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$site_images_hidden_fields]
+	$site_images_hidden_fields?
+	<fieldset class="gachireai-fieldset-reset" ?$site_images_disabled disabled$site_images_disabled?>
+	<section class="gachireai-section" ?$site_images_anchor id="gachireai-section-{$site_images_anchor}"$site_images_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$site_images_title}</h2>
+			?$site_images_intro
+			<p class="gachireai-section__desc">{$site_images_intro}</p>
+			$site_images_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<table class="form-table" role="presentation">
+				?$site_images_items
+				[$site_images_items]
+				?$el_is_eyecatch_group
+				{% partials/eyecatch-group.dv %}
+				$el_is_eyecatch_group?
+				?$el_is_favicon
+				<tr class="gachireai-field">
+					<th scope="row">{$el_label}</th>
+					<td>
+						<div class="gachireai-image" data-gachireai-image>
+							<input type="hidden" name="site_images[favicon]" value="{$favicon_id}">
+							<div class="gachireai-image__preview" data-gachireai-image-preview-box>
+								?$favicon_has_image
+								<img src="{$favicon_url}" alt="">
+								$favicon_has_image?
+							</div>
+							<p class="gachireai-image__actions">
+								<button type="submit" class="button" name="{$favicon_button_name}" value="1" ?$favicon_disabled disabled$favicon_disabled? ?$favicon_button_action data-gachireai-ajax="{$favicon_button_action}"$favicon_button_action? ?$favicon_button_title title="{$favicon_button_title}"$favicon_button_title?>{% partials/button-icon.dv %}{$favicon_button_label}</button>
+							</p>
+						</div>
+						?$favicon_messages
+						<div class="gachireai-image__messages">
+							[$favicon_messages]
+							<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+							[/$favicon_messages]
+						</div>
+						$favicon_messages?
+						<p class="description">{$el_description}</p>
+					</td>
+				</tr>
+				$el_is_favicon?
+				?$el_is_field
+				{% partials/field.dv %}
+				$el_is_field?
+				?$el_is_image
+				{% partials/field.dv %}
+				$el_is_image?
+				?$el_is_font
+				{% partials/font-field.dv %}
+				$el_is_font?
+				[/$site_images_items]
+				$site_images_items?
+			</table>
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary" ?$site_images_submit_action data-gachireai-ajax="{$site_images_submit_action}"$site_images_submit_action?>{$site_images_submit_label}</button>
+				?$site_images_note
+				<span class="gachireai-section__note">{$site_images_note}</span>
+				$site_images_note?
+			</div>
+			<div class="gachireai-section__messages">
+				?$site_images_messages
+				[$site_images_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$site_images_messages]
+				$site_images_messages?
+			</div>
+		</footer>
+	</section>
+	</fieldset>
+</form>

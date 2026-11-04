@@ -1,0 +1,18 @@
+
+.gachireai-affiliate--p06 .gachireai-affiliate__card {
+	border-width: 2px;
+	border-radius: 6px;
+	box-shadow: none;
+}
+.gachireai-affiliate--p06 .gachireai-affiliate__search {
+	border-width: 2px;
+	border-color: var(--gachireai-button);
+	background: transparent;
+	color: var(--gachireai-button);
+}
+.gachireai-affiliate--p06 .gachireai-affiliate__search:hover,
+.gachireai-affiliate--p06 .gachireai-affiliate__search:focus-visible {
+	background: var(--gachireai-button);
+	color: var(--gachireai-button-text);
+	filter: none;
+}

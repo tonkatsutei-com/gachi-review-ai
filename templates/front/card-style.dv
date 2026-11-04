@@ -1,0 +1,44 @@
+/* 商品カードのスタイル（③サイト設定の「商品ボックス設定」。サイト全体の設定）。
+   表示切り替え（価格・商品名）とカラー（商品名・枠・ボタン・装飾の 4 色。ボタンは**塗りつぶしの文字色**も）を持つ。
+   値は PHP 側（Affiliate\Card_Settings）で検証済みのものだけが入る。2026-09-30 T23。 */
+?$card_hide_price
+.gachireai-affiliate .gachireai-affiliate__price,
+.gachireai-affiliate .gachireai-affiliate__offer-price {
+	display: none;
+}
+$card_hide_price?
+?$card_hide_name
+.gachireai-affiliate .gachireai-affiliate__name {
+	display: none;
+}
+$card_hide_name?
+?$card_hide_disclosure
+.gachireai-affiliate .gachireai-affiliate__disclosure {
+	display: none;
+}
+$card_hide_disclosure?
+?$card_color_name
+.gachireai-affiliate {
+	--gachireai-name: {$card_color_name};
+}
+$card_color_name?
+?$card_color_frame
+.gachireai-affiliate {
+	--gachireai-border: {$card_color_frame};
+}
+$card_color_frame?
+?$card_color_button
+.gachireai-affiliate {
+	--gachireai-button: {$card_color_button};
+}
+$card_color_button?
+?$card_color_button_text
+.gachireai-affiliate {
+	--gachireai-button-text: {$card_color_button_text};
+}
+$card_color_button_text?
+?$card_color_decoration
+.gachireai-affiliate {
+	--gachireai-accent: {$card_color_decoration};
+}
+$card_color_decoration?

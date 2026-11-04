@@ -1,0 +1,45 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	?$sections
+	[$sections]
+	<section class="gachireai-section" id="gachireai-section-{$section_key}">
+		{% partials/section-head.dv %}
+		?$common_override_sites
+		<p class="description">{$common_override_label}
+			[$common_override_sites]<span class="gachireai-notice__link"><a href="{$site_url}">{$site_name}</a></span>[/$common_override_sites]
+		</p>
+		$common_override_sites?
+		<div class="gachireai-section__main">
+			<form method="post" action="{$form_action}">
+				?$hidden_fields
+				[$hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$hidden_fields]
+				$hidden_fields?
+				<table class="form-table" role="presentation">
+					?$fields
+					[$fields]
+					{% partials/field.dv %}
+					[/$fields]
+					$fields?
+				</table>
+				<p class="submit">
+					<button type="submit" class="button button-primary">{$save_label}</button>
+					?$status_text
+					<span class="description gachireai-scraping-status">{$status_text}</span>
+					$status_text?
+				</p>
+				?$messages
+				<div class="gachireai-section__messages">
+					[$messages]
+					<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+					[/$messages]
+				</div>
+				$messages?
+			</form>
+		</div>
+	</section>
+	[/$sections]
+	$sections?
+</div>

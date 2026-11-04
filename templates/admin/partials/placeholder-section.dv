@@ -1,0 +1,15 @@
+<section class="gachireai-section">
+	<header class="gachireai-section__header">
+		<h2 class="gachireai-section__title">{$placeholder_title}</h2>
+		?$placeholder_desc
+		<p class="gachireai-section__desc">{$placeholder_desc}</p>
+		$placeholder_desc?
+	</header>
+	<div class="gachireai-section__main">
+		<div class="gachireai-block">
+			<div class="gachireai-block__main">
+				<p class="description">{$placeholder_text}</p>
+			</div>
+		</div>
+	</div>
+</section>

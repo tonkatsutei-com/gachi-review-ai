@@ -1,0 +1,44 @@
+<section class="gachireai-section" id="gachireai-section-license-matrix">
+	<header class="gachireai-section__header">
+		<h2 class="gachireai-section__title">{$license_matrix_title}</h2>
+		<p class="gachireai-section__desc">{$license_matrix_intro}</p>
+	</header>
+	<div class="gachireai-section__main">
+		<div class="gachireai-block">
+			<div class="gachireai-block__main">
+				<table class="widefat gachireai-license-matrix">
+					<thead>
+						<tr>
+							<th scope="col">機能</th>
+							<th scope="col" class="gachireai-license-matrix__free">FREE</th>
+							<th scope="col" class="gachireai-license-matrix__basic">BASIC</th>
+							<th scope="col" class="gachireai-license-matrix__pro"><span class="gachireai-license-matrix__badge">おすすめ</span>PRO</th>
+						</tr>
+					</thead>
+					<tbody>
+						?$license_matrix
+						[$license_matrix]
+						<tr>
+							<th scope="row">{$feature}</th>
+							<td class="gachireai-license-matrix__cell gachireai-license-matrix__cell--{$free_level} gachireai-license-matrix__free">{$free}</td>
+							<td class="gachireai-license-matrix__cell gachireai-license-matrix__cell--{$basic_level} gachireai-license-matrix__basic">{$basic}</td>
+							<td class="gachireai-license-matrix__cell gachireai-license-matrix__cell--{$pro_level} gachireai-license-matrix__pro">{$pro}</td>
+						</tr>
+						[/$license_matrix]
+						$license_matrix?
+					</tbody>
+				</table>
+				?$license_matrix_legend
+				<p class="gachireai-license-matrix__legend">
+					[$license_matrix_legend]
+					<span class="gachireai-license-matrix__legend-item"><span class="gachireai-license-matrix__mark gachireai-license-matrix__mark--{$level}"></span>{$label}</span>
+					[/$license_matrix_legend]
+				</p>
+				$license_matrix_legend?
+				?$license_matrix_note
+				<p class="gachireai-license-matrix__note">{$license_matrix_note}</p>
+				$license_matrix_note?
+			</div>
+		</div>
+	</div>
+</section>

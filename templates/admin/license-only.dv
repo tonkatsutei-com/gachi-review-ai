@@ -1,0 +1,4 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/license.dv %}
+</div>

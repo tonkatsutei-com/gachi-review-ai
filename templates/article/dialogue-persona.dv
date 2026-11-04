@@ -1,0 +1,2 @@
+
+<span class="gachireai-dialogue-persona gachireai-dialogue-persona--{$persona_speaker}">?$persona_has_image<img class="gachireai-dialogue-persona__avatar" src="{$persona_image_url}" alt="" loading="lazy">$persona_has_image?<span class="gachireai-dialogue-persona__name">{$persona_name}</span></span>

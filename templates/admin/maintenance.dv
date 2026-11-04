@@ -1,0 +1,402 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	?$recommended_plugins_groups
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$recommended_plugins_title}</h2>
+			<p class="gachireai-section__desc">{$recommended_plugins_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			[$recommended_plugins_groups]
+			<div class="gachireai-recommended__group">
+				<h3 class="gachireai-block__title">{$group_title}</h3>
+				?$items
+				<ul class="gachireai-recommended__list">
+					[$items]
+					<li class="gachireai-recommended__item">
+						<strong class="gachireai-recommended__name">{$item_name}</strong>
+						<p class="gachireai-recommended__desc">{$item_description}</p>
+						<form method="post" action="{$recommended_plugins_action_url}" class="gachireai-recommended__form">
+							?$recommended_plugins_hidden_fields
+							[$recommended_plugins_hidden_fields]
+							<input type="hidden" name="{$name}" value="{$value}">
+							[/$recommended_plugins_hidden_fields]
+							$recommended_plugins_hidden_fields?
+							<input type="hidden" name="{$recommended_plugins_field}" value="{$item_slug}">
+							<button type="submit" class="button button-primary">{$recommended_plugins_install_label}</button>
+							<span class="gachireai-section__note">{$item_state_label}</span>
+						</form>
+					</li>
+					[/$items]
+				</ul>
+				$items?
+			</div>
+			[/$recommended_plugins_groups]
+			?$recommended_plugins_messages
+			<div class="gachireai-section__messages">
+				[$recommended_plugins_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$recommended_plugins_messages]
+			</div>
+			$recommended_plugins_messages?
+		</div>
+	</section>
+	$recommended_plugins_groups?
+	?$wp_settings_visible
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$wp_settings_title}</h2>
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-wp-settings__item">
+				<strong class="gachireai-wp-settings__name">{$wp_settings_recommend_label}</strong>
+				<div class="gachireai-wp-settings__body">
+					<p class="gachireai-wp-settings__desc">{$wp_settings_description}</p>
+					<form method="post" action="{$wp_settings_action_url}" class="gachireai-wp-settings__form">
+						?$wp_settings_hidden_fields
+						[$wp_settings_hidden_fields]
+						<input type="hidden" name="{$name}" value="{$value}">
+						[/$wp_settings_hidden_fields]
+						$wp_settings_hidden_fields?
+						<button type="submit" class="button button-primary">{$wp_settings_button_label}</button>
+					</form>
+				</div>
+			</div>
+			?$wp_settings_messages
+			<div class="gachireai-section__messages">
+				[$wp_settings_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$wp_settings_messages]
+			</div>
+			$wp_settings_messages?
+			<div class="gachireai-wp-settings__item">
+				<div class="gachireai-wp-settings__name">
+					<strong>{$wp_settings_details_title}</strong>
+					?$wp_settings_legend
+					<span class="gachireai-wp-settings__legend">
+						[$wp_settings_legend]
+						<span class="gachireai-wp-settings__legend-item">{$legend_text}</span>
+						[/$wp_settings_legend]
+					</span>
+					$wp_settings_legend?
+				</div>
+				<div class="gachireai-wp-settings__body">
+					?$wp_settings_groups
+					[$wp_settings_groups]
+					<div class="gachireai-wp-settings__group">
+						<h4 class="gachireai-wp-settings__group-title">{$group_title}</h4>
+						?$items
+						<ul class="gachireai-wp-settings__list">
+							[$items]
+							<li class="gachireai-wp-settings__entry">{$item_text}</li>
+							[/$items]
+						</ul>
+						$items?
+						?$subgroups
+						[$subgroups]
+						<div class="gachireai-wp-settings__subgroup">
+							<h5 class="gachireai-wp-settings__subtitle">{$sub_title}</h5>
+							?$sub_items
+							<ul class="gachireai-wp-settings__list">
+								[$sub_items]
+								<li class="gachireai-wp-settings__entry">{$sub_item_text}</li>
+								[/$sub_items]
+							</ul>
+							$sub_items?
+						</div>
+						[/$subgroups]
+						$subgroups?
+					</div>
+					[/$wp_settings_groups]
+					$wp_settings_groups?
+				</div>
+			</div>
+		</div>
+	</section>
+	$wp_settings_visible?
+	?$theme_visible
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$theme_title}</h2>
+			<p class="gachireai-section__desc">{$theme_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-wp-settings__item">
+				<strong class="gachireai-wp-settings__name">{$theme_install_label}</strong>
+				<div class="gachireai-wp-settings__body">
+					<p class="gachireai-wp-settings__desc">{$theme_install_description}</p>
+					<form method="post" action="{$theme_install_action_url}" class="gachireai-wp-settings__form">
+						?$theme_install_hidden_fields
+						[$theme_install_hidden_fields]
+						<input type="hidden" name="{$name}" value="{$value}">
+						[/$theme_install_hidden_fields]
+						$theme_install_hidden_fields?
+						<button type="submit" class="button button-primary">{$theme_install_button_label}</button>
+					</form>
+				</div>
+			</div>
+			?$theme_install_messages
+			<div class="gachireai-section__messages">
+				[$theme_install_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$theme_install_messages]
+			</div>
+			$theme_install_messages?
+			<div class="gachireai-wp-settings__item">
+				<strong class="gachireai-wp-settings__name">{$theme_settings_label}</strong>
+				<div class="gachireai-wp-settings__body">
+					<p class="gachireai-wp-settings__desc">{$theme_settings_description}</p>
+					<form method="post" action="{$theme_settings_action_url}" class="gachireai-wp-settings__form">
+						?$theme_settings_hidden_fields
+						[$theme_settings_hidden_fields]
+						<input type="hidden" name="{$name}" value="{$value}">
+						[/$theme_settings_hidden_fields]
+						$theme_settings_hidden_fields?
+						<button type="submit" class="button button-primary">{$theme_settings_button_label}</button>
+					</form>
+				</div>
+			</div>
+			?$theme_settings_messages
+			<div class="gachireai-section__messages">
+				[$theme_settings_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$theme_settings_messages]
+			</div>
+			$theme_settings_messages?
+			<div class="gachireai-wp-settings__item">
+				<div class="gachireai-wp-settings__name">
+					<strong>{$theme_details_label}</strong>
+					?$theme_settings_legend
+					<span class="gachireai-wp-settings__legend">
+						[$theme_settings_legend]
+						<span class="gachireai-wp-settings__legend-item">{$legend_text}</span>
+						[/$theme_settings_legend]
+					</span>
+					$theme_settings_legend?
+				</div>
+				<div class="gachireai-wp-settings__body">
+					?$theme_settings_groups
+					[$theme_settings_groups]
+					<div class="gachireai-wp-settings__group">
+						<h4 class="gachireai-wp-settings__group-title">{$group_title}</h4>
+						?$items
+						<ul class="gachireai-wp-settings__list">
+							[$items]
+							<li class="gachireai-wp-settings__entry">{$item_text}</li>
+							[/$items]
+						</ul>
+						$items?
+					</div>
+					[/$theme_settings_groups]
+					$theme_settings_groups?
+				</div>
+			</div>
+		</div>
+	</section>
+	$theme_visible?
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$backup_title}</h2>
+			<p class="gachireai-section__desc">{$backup_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			<form method="post" action="{$backup_action_url}">
+				?$backup_hidden_fields
+				[$backup_hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$backup_hidden_fields]
+				$backup_hidden_fields?
+				?$backup_sites
+				<fieldset class="gachireai-maintenance__sites">
+					<legend>{$backup_sites_label}</legend>
+					<label><input type="checkbox" name="{$backup_common_name}" value="1" ?$backup_common_checked checked$backup_common_checked?> {$backup_common_label}</label>
+					[$backup_sites]
+					<label><input type="checkbox" name="{$backup_site_name}" value="{$value}" ?$checked checked$checked?> {$label}</label>
+					[/$backup_sites]
+					<p class="gachireai-maintenance__toggle">
+						<button type="button" class="button" data-gachireai-site-toggle="check">{$backup_check_all_label}</button>
+						<button type="button" class="button" data-gachireai-site-toggle="uncheck">{$backup_uncheck_all_label}</button>
+					</p>
+				</fieldset>
+				$backup_sites?
+				<p class="description">{$backup_note}</p>
+				<p class="gachireai-section__actions">
+					<button type="submit" class="button button-primary">{$backup_button_label}</button>
+				</p>
+			</form>
+		</div>
+	</section>
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$restore_title}</h2>
+			<p class="gachireai-section__desc">{$restore_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			<form method="post" action="{$restore_action_url}" enctype="multipart/form-data">
+				?$restore_hidden_fields
+				[$restore_hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$restore_hidden_fields]
+				$restore_hidden_fields?
+				<p>
+					<input type="file" name="{$restore_file_field}" accept="application/json,.json">
+				</p>
+				<p class="gachireai-section__actions">
+					<button type="submit" class="button button-primary">{$restore_upload_label}</button>
+				</p>
+			</form>
+			?$restore_messages
+			<div class="gachireai-section__messages">
+				[$restore_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$restore_messages]
+			</div>
+			$restore_messages?
+			?$has_mapping
+			<hr class="gachireai-maintenance__divider">
+			<form method="post" action="{$mapping_action_url}">
+				?$mapping_hidden_fields
+				[$mapping_hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$mapping_hidden_fields]
+				$mapping_hidden_fields?
+				<table class="form-table gachireai-maintenance__map" role="presentation">
+					<thead>
+						<tr>
+							<th scope="col">{$mapping_dest_label}</th>
+							<th scope="col">{$mapping_source_label}</th>
+						</tr>
+					</thead>
+					?$mapping_destinations
+					<tbody>
+						[$mapping_destinations]
+						<tr>
+							<th scope="row">{$dest_label}</th>
+							<td>
+								?$options
+								<select name="{$field_name}">
+									[$options]
+									<option value="{$value}" ?$selected selected$selected?>{$label}</option>
+									[/$options]
+								</select>
+								$options?
+							</td>
+						</tr>
+						[/$mapping_destinations]
+					</tbody>
+					$mapping_destinations?
+				</table>
+				<p class="gachireai-maintenance__overwrite">
+					<label><input type="radio" name="{$overwrite_name}" value="0" ?$overwrite_no_checked checked$overwrite_no_checked?> {$overwrite_no_label}</label>
+					<label><input type="radio" name="{$overwrite_name}" value="1" ?$overwrite_yes_checked checked$overwrite_yes_checked?> {$overwrite_yes_label}</label>
+				</p>
+				<p class="description">{$overwrite_note}</p>
+				<p class="description">{$mapping_note}</p>
+				<p class="gachireai-section__actions">
+					<button type="submit" class="button button-primary">{$mapping_button_label}</button>
+				</p>
+			</form>
+			$has_mapping?
+		</div>
+	</section>
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$reset_title}</h2>
+			<p class="gachireai-section__desc">{$reset_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			<form method="post" action="{$reset_action_url}">
+				?$reset_hidden_fields
+				[$reset_hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$reset_hidden_fields]
+				$reset_hidden_fields?
+				<p class="gachireai-section__actions">
+					<button type="button" class="button button-primary" data-gachireai-reset-open>{$reset_button_label}</button>
+				</p>
+				?$reset_messages
+				<div class="gachireai-section__messages">
+					[$reset_messages]
+					<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+					[/$reset_messages]
+				</div>
+				$reset_messages?
+				<div class="gachireai-modal gachireai-modal--reset" data-gachireai-reset-dialog hidden>
+					<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-reset-title">
+						<h3 class="gachireai-modal__title" id="gachireai-reset-title">{$reset_confirm_title}</h3>
+						<p class="gachireai-modal__desc">{$reset_confirm_description}</p>
+						<p class="gachireai-maintenance__risk">
+							<label><input type="checkbox" name="{$reset_confirm_name}" value="1" data-gachireai-reset-agree> {$reset_confirm_label}</label>
+						</p>
+						<p class="gachireai-modal__actions">
+							<button type="submit" class="button button-primary" data-gachireai-reset-submit disabled="disabled">{$reset_confirm_button}</button>
+							<button type="button" class="button" data-gachireai-reset-cancel>{$reset_cancel_label}</button>
+						</p>
+					</div>
+				</div>
+			</form>
+		</div>
+	</section>
+	?$network_visible
+	<section class="gachireai-section">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$network_title}</h2>
+			<p class="gachireai-section__desc">{$network_description}</p>
+		</header>
+		<div class="gachireai-section__main">
+			?$network_show_not_pro
+			<div class="notice inline notice-warning"><p>{$network_pro_notice}</p></div>
+			$network_show_not_pro?
+			<p class="description">{$network_status_label}</p>
+			<p class="description">{$network_paths_note}</p>
+			?$network_show_network_setup
+			<p class="description">{$network_network_setup_guide}</p>
+			<p class="gachireai-section__actions">
+				<a class="button button-primary" href="{$network_network_setup_url}">{$network_network_setup_label}</a>
+			</p>
+			$network_show_network_setup?
+			?$network_show_form
+			<form method="post" action="{$network_action_url}">
+				?$network_hidden_fields
+				[$network_hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$network_hidden_fields]
+				$network_hidden_fields?
+				<input type="hidden" name="{$network_step_field}" value="{$network_step_value}">
+				<p class="gachireai-section__actions">
+					<button type="button" class="button button-primary" data-gachireai-network-open>{$network_button_label}</button>
+				</p>
+				?$network_messages
+				<div class="gachireai-section__messages">
+					[$network_messages]
+					<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+					[/$network_messages]
+				</div>
+				$network_messages?
+				<div class="gachireai-modal gachireai-modal--reset" data-gachireai-network-dialog hidden>
+					<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-network-title">
+						<h3 class="gachireai-modal__title" id="gachireai-network-title">{$network_confirm_title}</h3>
+						<p class="gachireai-modal__desc">{$network_confirm_description}</p>
+						<p class="gachireai-maintenance__risk">
+							<label><input type="checkbox" name="{$network_confirm_name}" value="1" data-gachireai-network-agree> {$network_confirm_label}</label>
+						</p>
+						<p class="gachireai-modal__actions">
+							<button type="submit" class="button button-primary" data-gachireai-network-submit disabled="disabled">{$network_confirm_button}</button>
+							<button type="button" class="button" data-gachireai-network-cancel>{$network_cancel_label}</button>
+						</p>
+					</div>
+				</div>
+			</form>
+			$network_show_form?
+			?$network_complete
+			<p class="gachireai-section__actions">
+				<button type="button" class="button" disabled="disabled">{$network_button_label}</button>
+				<span class="gachireai-section__note">{$network_complete_message}</span>
+			</p>
+			$network_complete?
+			<p class="description">{$network_server_note}</p>
+		</div>
+	</section>
+	$network_visible?
+</div>

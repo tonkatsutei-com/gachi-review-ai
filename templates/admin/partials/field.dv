@@ -1,0 +1,150 @@
+<tr class="gachireai-field ?$field_disabled gachireai-field--disabled$field_disabled?" ?$row_depends_on data-gachireai-depends="{$row_depends_on}" data-gachireai-value="{$row_depends_values}"$row_depends_on? ?$disabled_by data-gachireai-disabled-by="{$disabled_by}"$disabled_by? ?$common_target data-gachireai-common-target="{$common_target}"$common_target? ?$field_locked data-gachireai-locked="1"$field_locked?>
+	!$is_headless
+	?$is_choice
+	<th scope="row">{$label}</th>
+	$is_choice?
+	!$is_choice
+	?$is_readonly
+	<th scope="row">{$label}</th>
+	$is_readonly?
+	!$is_readonly
+	<th scope="row">
+		<label for="{$name}">{$label}</label>
+		?$field_header_buttons
+		<div class="gachireai-field__actions gachireai-field__actions--header">
+			[$field_header_buttons]
+			<button type="submit" ?$btn_name name="{$btn_name}" value="{$btn_value}"$btn_name? class="button ?$btn_primary button-primary$btn_primary?" ?$btn_disabled disabled$btn_disabled? ?$btn_title title="{$btn_title}"$btn_title? ?$btn_action data-gachireai-ajax="{$btn_action}"$btn_action? ?$btn_testing data-gachireai-testing="1"$btn_testing?>{% partials/button-icon.dv %}{$btn_label}</button>
+			[/$field_header_buttons]
+		</div>
+		$field_header_buttons?
+	</th>
+	$is_readonly!
+	$is_choice!
+	$is_headless!
+	?$is_headless
+	<td colspan="2">
+	$is_headless?
+	!$is_headless
+	<td>
+	$is_headless!
+		?$is_readonly
+		<span class="gachireai-readonly__value">{$value}</span>
+		?$note
+		　{$note}
+		$note?
+		$is_readonly?
+		?$is_radio
+		<div class="gachireai-choices" role="radiogroup" aria-label="{$label}" ?$option_depends data-gachireai-depends="{$option_depends}"$option_depends?>
+			?$radios
+			[$radios]
+			<label class="gachireai-choice" ?$opt_ec data-gachireai-value="{$opt_ec}"$opt_ec?><input type="radio" name="{$name}" value="{$opt_value}" ?$opt_checked checked$opt_checked? ?$opt_disabled disabled$opt_disabled? ?$field_disabled disabled$field_disabled? ?$opt_driver data-gachireai-driver="{$opt_driver}"$opt_driver?><span>{$opt_label}</span></label>
+			[/$radios]
+			$radios?
+		</div>
+		$is_radio?
+		?$is_checkbox
+		?$checkboxes
+		[$checkboxes]
+		<label ?$opt_disabled class="gachireai-checkbox--disabled"$opt_disabled?><input type="checkbox" name="{$name}" value="{$opt_value}" ?$opt_checked checked$opt_checked? ?$opt_disabled disabled$opt_disabled? ?$field_disabled disabled$field_disabled? ?$master_key data-gachireai-master="{$master_key}"$master_key? ?$is_exclusive data-gachireai-exclusive="{$exclusive_group}"$is_exclusive?> {$opt_label}</label>
+		[/$checkboxes]
+		$checkboxes?
+		$is_checkbox?
+		?$is_checkbox_multi
+		?$checkboxes
+		[$checkboxes]
+		<label ?$opt_disabled class="gachireai-checkbox--disabled"$opt_disabled?><input type="checkbox" name="{$name}[]" value="{$opt_value}" ?$opt_checked checked$opt_checked? ?$opt_disabled disabled$opt_disabled? ?$field_disabled disabled$field_disabled?> {$opt_label}</label>
+		[/$checkboxes]
+		$checkboxes?
+		$is_checkbox_multi?
+		?$is_textarea
+		<textarea id="{$name}" name="{$name}" rows="{$rows}" class="large-text" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled?>{$value}</textarea>
+		$is_textarea?
+		?$is_category
+		<p class="gachireai-category__actions">
+			<button type="button" class="button button-primary" ?$picker_action data-gachireai-category-open="{$picker_action}"$picker_action? ?$picker_target data-gachireai-category-target="{$picker_target}"$picker_target?>{$picker_label}</button>
+			?$picker_clear_label
+			<button type="button" class="button-link gachireai-category__clear" data-gachireai-category-clear="{$name}"><span class="gachireai-icon gachireai-icon--trash"></span>{$picker_clear_label}</button>
+			$picker_clear_label?
+		</p>
+		$is_category?
+		?$is_select
+		<select id="{$name}" name="{$name}" ?$field_disabled disabled$field_disabled? ?$driver data-gachireai-driver="{$driver}"$driver?>
+			?$options
+			[$options]
+			<option value="{$opt_value}" ?$opt_selected selected$opt_selected? ?$opt_disabled disabled$opt_disabled?>{$opt_label}</option>
+			[/$options]
+			$options?
+		</select>
+		$is_select?
+		?$is_datalist
+		<input type="text" id="{$name}" name="{$name}" value="{$value}" class="regular-text" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled? ?$datalist_id list="{$datalist_id}"$datalist_id?>
+		<datalist id="{$datalist_id}">
+			?$options
+			[$options]
+			<option value="{$opt_value}"></option>
+			[/$options]
+			$options?
+		</datalist>
+		$is_datalist?
+		?$is_color
+		{% partials/color.dv %}
+		$is_color?
+		?$is_image
+		<div class="gachireai-image" data-gachireai-image>
+			<input type="hidden" id="{$name}" name="{$name}" value="{$image_id}" ?$field_disabled disabled$field_disabled? data-gachireai-image-input>
+			!$image_hide_preview
+			<div class="gachireai-image__preview" data-gachireai-image-preview-box>
+				?$image_url
+				<img src="{$image_url}" alt="" data-gachireai-image-preview>
+				$image_url?
+			</div>
+			$image_hide_preview!
+			<p class="gachireai-image__actions">
+				?$image_generate_label
+				<span class="gachireai-image__generate">
+					<button type="submit" class="button" name="{$image_generate_name}" value="1" ?$image_generate_disabled disabled$image_generate_disabled? ?$field_disabled disabled$field_disabled? ?$image_generate_action data-gachireai-ajax="{$image_generate_action}"$image_generate_action? ?$image_generate_title title="{$image_generate_title}"$image_generate_title?>{% partials/button-icon.dv %}{$image_generate_label}</button>
+				</span>
+				$image_generate_label?
+				<button type="button" class="button" ?$field_disabled disabled$field_disabled? data-gachireai-image-picker>{$image_pick_label}</button>
+				<button type="button" class="button-link gachireai-image__clear" ?$field_disabled disabled$field_disabled? data-gachireai-image-clear>{$image_clear_label}</button>
+			</p>
+		</div>
+		$is_image?
+		?$is_password
+		<input type="password" id="{$name}" name="{$name}" value="{$value}" class="regular-text" autocomplete="new-password" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled?>
+		$is_password?
+		?$is_cron
+		<span class="gachireai-cron">
+			<label class="gachireai-cron__item"><span class="gachireai-cron__label">分</span><input type="text" name="{$cron_minute_name}" value="{$cron_minute}" class="gachireai-cron__input gachireai-cron__minute"></label>
+			<label class="gachireai-cron__item"><span class="gachireai-cron__label">時</span><input type="text" name="{$cron_hour_name}" value="{$cron_hour}" class="gachireai-cron__input gachireai-cron__hour"></label>
+			<span class="gachireai-cron__item"><span class="gachireai-cron__label">日</span><input type="text" value="*" class="gachireai-cron__input gachireai-cron__fixed" readonly tabindex="-1" aria-readonly="true"></span>
+			<span class="gachireai-cron__item"><span class="gachireai-cron__label">月</span><input type="text" value="*" class="gachireai-cron__input gachireai-cron__fixed" readonly tabindex="-1" aria-readonly="true"></span>
+			<span class="gachireai-cron__item"><span class="gachireai-cron__label">曜</span><input type="text" value="*" class="gachireai-cron__input gachireai-cron__fixed" readonly tabindex="-1" aria-readonly="true"></span>
+		</span>
+		$is_cron?
+		?$is_input
+		<input type="text" id="{$name}" name="{$name}" value="{$value}" class="regular-text" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled?>
+		$is_input?
+		?$is_number
+		<input type="number" id="{$name}" name="{$name}" value="{$value}" class="small-text" min="{$number_min}" max="{$number_max}" step="{$number_step}" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled?>
+		$is_number?
+		?$field_messages
+		<div class="gachireai-field__messages">
+			[$field_messages]
+			<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+			[/$field_messages]
+		</div>
+		$field_messages?
+		?$description
+		<p class="description">{$description}</p>
+		$description?
+		?$warning
+		<p class="gachireai-field__warning">{$warning}</p>
+		$warning?
+		?$ec_descriptions
+		[$ec_descriptions]
+		<p class="description ?$class {$class}$class?" ?$depends data-gachireai-depends="{$depends}"$depends? data-gachireai-value="{$ec}">{$text}</p>
+		[/$ec_descriptions]
+		$ec_descriptions?
+	</td>
+</tr>

@@ -1,0 +1,28 @@
+
+<!-- wp:shortcode -->
+[gachireai_top_eyecatch]
+<!-- /wp:shortcode -->
+<!-- wp:heading --><h2 class="wp-block-heading">{$intro_heading}</h2><!-- /wp:heading -->
+<!-- wp:shortcode -->
+[gachireai_profile_photo]
+<!-- /wp:shortcode -->
+?$profile_paragraphs
+[$profile_paragraphs]
+<!-- wp:paragraph --><p>{$text}</p><!-- /wp:paragraph -->
+[/$profile_paragraphs]
+$profile_paragraphs?
+<!-- wp:heading --><h2 class="wp-block-heading">{$about_heading}</h2><!-- /wp:heading -->
+?$description
+<!-- wp:paragraph --><p>{$description}</p><!-- /wp:paragraph -->
+$description?
+?$scope_paragraphs
+[$scope_paragraphs]
+<!-- wp:paragraph --><p>{$text}</p><!-- /wp:paragraph -->
+[/$scope_paragraphs]
+$scope_paragraphs?
+?$has_privacy
+<!-- wp:paragraph --><p>{$disclosure_text}{$disclosure_link_prefix}<a href="{$privacy_url}">{$privacy_label}</a>{$disclosure_link_suffix}</p><!-- /wp:paragraph -->
+$has_privacy?
+!$has_privacy
+<!-- wp:paragraph --><p>{$disclosure_text}</p><!-- /wp:paragraph -->
+$has_privacy!

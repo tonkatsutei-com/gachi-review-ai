@@ -1,0 +1,100 @@
+<form method="post" action="{$elements_form_action}">
+	?$elements_hidden_fields
+	[$elements_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$elements_hidden_fields]
+	$elements_hidden_fields?
+	<section class="gachireai-section" ?$elements_anchor id="gachireai-section-{$elements_anchor}"$elements_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$elements_title}</h2>
+			?$elements_intro
+			<p class="gachireai-section__desc">{$elements_intro}</p>
+			$elements_intro?
+		</header>
+		<div class="gachireai-section__main">
+			<div class="gachireai-section__actions gachireai-section__actions--header">
+			?$elements_buttons
+			[$elements_buttons]
+			<button type="submit" name="{$btn_name}" value="{$btn_value}" class="button ?$btn_primary button-primary$btn_primary?" ?$btn_disabled disabled$btn_disabled? ?$btn_title title="{$btn_title}"$btn_title? ?$btn_action data-gachireai-ajax="{$btn_action}"$btn_action?>{% partials/button-icon.dv %}{$btn_label}</button>
+			[/$elements_buttons]
+			$elements_buttons?
+		</div>
+			?$elements_generate_messages
+			<div class="gachireai-section__messages gachireai-section__messages--generate">
+				[$elements_generate_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$elements_generate_messages]
+			</div>
+			$elements_generate_messages?
+			?$elements_blocks
+			[$elements_blocks]
+			<div class="gachireai-block">
+				{% partials/block-head.dv %}
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$block_items
+						[$block_items]
+						?$el_is_readonly_display
+						<tr class="gachireai-field">
+							<th scope="row">{$el_label}</th>
+							<td>
+								<span class="gachireai-readonly__value">{$el_readonly_value}</span>
+								?$el_description
+								<p class="description">{$el_description}</p>
+								$el_description?
+							</td>
+						</tr>
+						$el_is_readonly_display?
+						?$el_is_field
+						<tr class="gachireai-field">
+							!$el_is_headless
+							<th scope="row"><label for="{$el_field_name}">{$el_label}</label></th>
+							$el_is_headless!
+							?$el_is_headless
+							<td colspan="2">
+							$el_is_headless?
+							!$el_is_headless
+							<td>
+							$el_is_headless!
+								?$el_is_textarea
+								<textarea id="{$el_field_name}" name="{$el_field_name}" rows="{$el_rows}" class="large-text" ?$el_is_readonly_field readonly$el_is_readonly_field?>{$el_value}</textarea>
+								$el_is_textarea?
+								!$el_is_textarea
+								<input type="text" id="{$el_field_name}" name="{$el_field_name}" value="{$el_value}" class="regular-text" ?$el_is_readonly_field readonly$el_is_readonly_field?>
+								$el_is_textarea!
+								?$el_description
+								<p class="description">{$el_description}</p>
+								$el_description?
+								?$el_candidates
+								<div class="gachireai-candidates">
+									<p class="description">{$el_candidates_label}</p>
+									[$el_candidates]
+									<label class="gachireai-candidate"><input type="radio" name="{$el_pick_name}" value="{$cand_value}" ?$cand_checked checked$cand_checked? data-target="{$el_field_name}"><span>{$cand_label}</span></label>
+									[/$el_candidates]
+								</div>
+								$el_candidates?
+							</td>
+						</tr>
+						$el_is_field?
+						[/$block_items]
+						$block_items?
+					</table>
+				</div>
+			</div>
+			[/$elements_blocks]
+			$elements_blocks?
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary" ?$elements_submit_action data-gachireai-ajax="{$elements_submit_action}"$elements_submit_action?>{$elements_submit_label}</button>
+			</div>
+			<div class="gachireai-section__messages">
+				?$elements_messages
+				[$elements_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$elements_messages]
+				$elements_messages?
+			</div>
+		</footer>
+	</section>
+</form>

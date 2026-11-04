@@ -1,0 +1,48 @@
+<div class="gachireai-modal__body" id="{$body_id}">
+	<h3 class="gachireai-modal__title" id="gachireai-category-picker-title">{$title}</h3>
+	?$description
+	<p class="description">{$description}</p>
+	$description?
+	?$path
+	<nav class="gachireai-category__path">
+		[$path]
+		?$is_current
+		<span class="gachireai-category__crumb gachireai-category__crumb--current">{$label}</span>
+		$is_current?
+		!$is_current
+		<button type="button" class="gachireai-category__crumb" data-gachireai-category-open="{$open_action}" data-gachireai-category-parent="{$genre_id}">{$label}</button>
+		$is_current!
+		[/$path]
+	</nav>
+	$path?
+	?$messages
+	[$messages]
+	<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+	[/$messages]
+	$messages?
+	?$children
+	<div class="gachireai-category__nodes" role="radiogroup" aria-label="{$title}">
+		[$children]
+		<div class="gachireai-category__node">
+			<label class="gachireai-category__choice">
+				<input type="radio" name="gachireai_category_node" value="{$genre_id}">
+				<span>{$name}</span>
+			</label>
+			<button type="button" class="gachireai-category__crumb" data-gachireai-category-open="{$open_action}" data-gachireai-category-parent="{$genre_id}">{$open_label}</button>
+		</div>
+		[/$children]
+	</div>
+	$children?
+	!$children
+	<p class="description">{$empty_message}</p>
+	$children!
+	<div class="gachireai-modal__actions">
+		?$children
+		<button type="button" class="button button-primary" data-gachireai-category-pick="{$pick_action}">{$pick_label}</button>
+		$children?
+		<button type="button" class="button" data-gachireai-category-close="1">{$close_label}</button>
+		!$children
+		<button type="button" class="button button-primary" data-gachireai-category-pick-current="{$pick_action}" data-gachireai-category-current-id="{$current_id}">{$add_current_label}</button>
+		$children!
+	</div>
+</div>

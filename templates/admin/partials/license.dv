@@ -1,0 +1,41 @@
+<section class="gachireai-section" id="gachireai-section-license">
+	<header class="gachireai-section__header">
+		<h2 class="gachireai-section__title">{$license_title}</h2>
+		<p class="gachireai-section__desc gachireai-section__desc--preline">{$license_intro}</p>
+	</header>
+	<div class="gachireai-section__main">
+		<form method="post" action="{$license_form_action}">
+			?$license_hidden_fields
+			[$license_hidden_fields]
+			<input type="hidden" name="{$name}" value="{$value}">
+			[/$license_hidden_fields]
+			$license_hidden_fields?
+			<div class="gachireai-block">
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						<tr class="gachireai-field">
+							<th scope="row"><label for="gachireai-license-key">{$license_id_label}</label></th>
+							<td>
+								<input type="text" id="gachireai-license-key" name="{$license_key_name}" value="{$license_key_value}" class="gachireai-license-id">
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__actions">
+						<button type="submit" class="button button-primary">{$license_submit_label}</button>
+						<span class="gachireai-license-status">{$license_status}</span>
+						?$license_status_note<span class="gachireai-license-status-note gachireai-license-status-note--{$license_status_note_level}">{$license_status_note}</span>$license_status_note?
+					</div>
+					<div class="gachireai-block__messages">
+						?$license_messages
+						[$license_messages]
+						<div class="notice inline notice-{$msg_type}"><p class="gachireai-notice--preline">{$msg_text}</p></div>
+						[/$license_messages]
+						$license_messages?
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</section>

@@ -1,0 +1,7 @@
+
+?$has_title
+<h1 class="gachireai-top-eyecatch__title">{$title}</h1>
+$has_title?
+?$image_url
+<figure class="wp-block-image size-large"><img src="{$image_url}" alt="{$image_alt}"/></figure>
+$image_url?

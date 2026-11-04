@@ -1,0 +1,23 @@
+
+<div class="gachireai-ai-generate" data-gachireai-ai-generate-box>
+	<div class="gachireai-ai-generate__actions">
+		<button type="button" class="button button-primary" data-gachireai-ai-generate ?$ai_generate_is_disabled disabled="disabled" title="{$ai_generate_blocked_reason}"$ai_generate_is_disabled?><span class="gachireai-icon gachireai-icon--{$ai_generate_icon}"></span>{$ai_generate_label}</button>
+	</div>
+	<dialog class="gachireai-ai-overlay" data-gachireai-ai-overlay data-gachireai-ai-overlay-total="{$ai_generate_total}">
+		<div class="gachireai-ai-overlay__panel" role="status" aria-live="polite">
+			<div class="gachireai-ai-overlay__robot"><span class="gachireai-icon gachireai-icon--robot"></span></div>
+			<p class="gachireai-ai-overlay__title">{$ai_generate_overlay_title}</p>
+			<div class="gachireai-ai-overlay__dots">
+				?$ai_generate_dots
+				[$ai_generate_dots]
+				<span class="gachireai-ai-overlay__dot" data-gachireai-ai-overlay-dot="{$dot_index}"></span>
+				[/$ai_generate_dots]
+				$ai_generate_dots?
+			</div>
+			<p class="gachireai-ai-overlay__fraction" data-gachireai-ai-overlay-fraction><span data-gachireai-ai-overlay-num>{$ai_generate_initial_phase}</span><span class="gachireai-ai-overlay__slash">/</span><span data-gachireai-ai-overlay-total>{$ai_generate_total}</span></p>
+			<p class="gachireai-ai-overlay__label" data-gachireai-ai-overlay-label>{$ai_generate_initial_label}</p>
+			<p class="gachireai-ai-overlay__retry" data-gachireai-ai-overlay-retry hidden>{$ai_generate_retry_label}</p>
+			<button type="button" class="button gachireai-ai-overlay__abort" data-gachireai-ai-overlay-abort>{$ai_generate_abort_label}</button>
+		</div>
+	</dialog>
+</div>

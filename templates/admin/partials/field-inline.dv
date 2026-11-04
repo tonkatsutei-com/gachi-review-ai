@@ -1,0 +1,9 @@
+
+?$checkboxes
+[$checkboxes]
+<label ?$opt_disabled class="gachireai-checkbox--disabled"$opt_disabled?><input type="checkbox" name="{$name}" value="{$opt_value}" ?$opt_checked checked$opt_checked? ?$opt_disabled disabled$opt_disabled? ?$common_switch data-gachireai-common-switch="{$common_switch}"$common_switch?> {$opt_label}</label>
+[/$checkboxes]
+$checkboxes?
+?$description
+<p class="description">{$description}</p>
+$description?

@@ -1,0 +1,39 @@
+<tr class="gachireai-field gachireai-font" data-gachireai-font-row>
+	<th scope="row">{$el_label}</th>
+	<td>
+		<p class="gachireai-font__select">
+			<select id="gachireai-font-family" name="{$font_name}" aria-label="{$el_label}" data-gachireai-font>
+				?$font_options
+				[$font_options]
+				<option value="{$opt_value}" ?$opt_selected selected$opt_selected? data-gachireai-font-weights="{$opt_weights}" data-gachireai-font-default-weight="{$opt_default_weight}">{$opt_label}</option>
+				[/$font_options]
+				$font_options?
+			</select>
+		</p>
+		<p class="gachireai-font__upload">
+			<label class="gachireai-font__upload-title" for="gachireai-font-file">{$font_upload_title}</label>
+			<input id="gachireai-font-file" type="file" name="{$font_file_name}" accept="{$font_file_accept}" data-gachireai-font-file>
+			<button type="submit" class="button" name="{$font_upload_button}" value="1" data-gachireai-ajax="{$font_upload_action}">{$font_upload_label}</button>
+		</p>
+		?$font_messages
+		<div class="gachireai-font__messages">
+			[$font_messages]
+			<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+			[/$font_messages]
+		</div>
+		$font_messages?
+		<p class="gachireai-font__weight">
+			<label for="gachireai-font-weight">{$font_weight_label}</label>
+			<select id="gachireai-font-weight" name="{$font_weight_name}" data-gachireai-font-weight>
+				?$font_weight_options
+				[$font_weight_options]
+				<option value="{$weight_value}" ?$weight_selected selected$weight_selected?>{$weight_label}</option>
+				[/$font_weight_options]
+				$font_weight_options?
+			</select>
+		</p>
+		?$el_description
+		<p class="description">{$el_description}</p>
+		$el_description?
+	</td>
+</tr>

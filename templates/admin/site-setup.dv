@@ -1,0 +1,15 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	{% partials/form-sections.dv %}
+	{% partials/site-elements.dv %}
+	{% partials/site-images.dv %}
+	{% partials/static-pages.dv %}
+	?$modal
+	<div class="gachireai-modal" id="{$picker_id}" hidden>
+		<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-category-picker-title">
+			{% partials/category-picker.dv %}
+		</div>
+	</div>
+	$modal?
+</div>

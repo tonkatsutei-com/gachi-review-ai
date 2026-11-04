@@ -1,0 +1,9 @@
+<header class="gachireai-page-head">
+	<h1 class="gachireai-page-head__title">{$page_title}</h1>
+	<span class="gachireai-page-head__brand">{$plugin_brand}<span class="gachireai-page-head__version">{$plugin_version}</span></span>
+</header>
+?$notices
+[$notices]
+{% partials/notice.dv %}
+[/$notices]
+$notices?

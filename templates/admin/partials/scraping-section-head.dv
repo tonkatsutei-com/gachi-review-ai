@@ -1,0 +1,20 @@
+<header class="gachireai-section__header">
+	<h2 class="gachireai-section__title">{$title}</h2>
+	?$description
+	<div class="gachireai-section__desc gachireai-section__desc--row">
+		<p class="gachireai-section__desc-text">{$description}</p>
+		<span class="gachireai-scraping-meta">
+			?$used_by
+			<span class="gachireai-scraping-tags">
+				[$used_by]
+				<span class="gachireai-scraping-tag gachireai-scraping-tag--{$tag_key}">{$tag_label}</span>
+				[/$used_by]
+			</span>
+			$used_by?
+			?$url
+			<a class="gachireai-scraping-link" href="{$url}" target="_blank" rel="noopener noreferrer">公式サイト</a>
+			$url?
+		</span>
+	</div>
+	$description?
+</header>

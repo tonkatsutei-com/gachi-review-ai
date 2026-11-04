@@ -1,0 +1,20 @@
+
+?$block_title
+<div class="gachireai-block__head">
+	<h3 class="gachireai-block__title">{$block_title}</h3>
+	?$block_head_buttons
+	<div class="gachireai-block__actions gachireai-block__actions--head">
+		[$block_head_buttons]
+		<button type="submit" ?$btn_name name="{$btn_name}" value="{$btn_value}"$btn_name? class="button ?$btn_primary button-primary$btn_primary?" ?$btn_disabled disabled$btn_disabled? ?$btn_title title="{$btn_title}"$btn_title? ?$btn_action data-gachireai-ajax="{$btn_action}"$btn_action? ?$btn_testing data-gachireai-testing="1"$btn_testing?>{% partials/button-icon.dv %}{$btn_label}</button>
+		[/$block_head_buttons]
+	</div>
+	$block_head_buttons?
+</div>
+$block_title?
+?$block_head_messages
+<div class="gachireai-block__messages gachireai-block__messages--head">
+	[$block_head_messages]
+	<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+	[/$block_head_messages]
+</div>
+$block_head_messages?

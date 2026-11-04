@@ -1,0 +1,88 @@
+<form method="post" action="{$form_action}" ?$form_id id="{$form_id}"$form_id?>
+	?$hidden_fields
+	[$hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$hidden_fields]
+	$hidden_fields?
+	?$sections
+	[$sections]
+	<section class="gachireai-section" ?$section_key id="gachireai-section-{$section_key}"$section_key?>
+		{% partials/section-head.dv %}
+		<div class="gachireai-section__main">
+			?$section_switch
+			<div class="gachireai-section__switch">
+				[$section_switch]
+				{% partials/field-inline.dv %}
+				[/$section_switch]
+			</div>
+			$section_switch?
+			?$blocks
+			[$blocks]
+			<div class="gachireai-block">
+				{% partials/block-head.dv %}
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$fields
+						[$fields]
+						{% partials/field.dv %}
+						[/$fields]
+						$fields?
+					</table>
+				</div>
+				<div class="gachireai-block__footer">
+					<div class="gachireai-block__actions">
+						?$block_buttons
+						[$block_buttons]
+						<button type="submit" ?$btn_name name="{$btn_name}" value="{$btn_value}"$btn_name? class="button ?$btn_primary button-primary$btn_primary?" ?$btn_disabled disabled$btn_disabled? ?$btn_title title="{$btn_title}"$btn_title? ?$btn_action data-gachireai-ajax="{$btn_action}"$btn_action? ?$btn_testing data-gachireai-testing="1"$btn_testing?>{% partials/button-icon.dv %}{$btn_label}</button>
+						[/$block_buttons]
+						$block_buttons?
+					</div>
+					<div class="gachireai-block__messages">
+						?$block_messages
+						[$block_messages]
+						<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_links
+<br>[$msg_links]<span class="gachireai-notice__link"><a href="{$url}">{$label}</a></span>[/$msg_links]$msg_links?</p></div>
+						[/$block_messages]
+						$block_messages?
+					</div>
+				</div>
+			</div>
+			[/$blocks]
+			$blocks?
+		</div>
+		?$section_buttons
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				[$section_buttons]
+				<button type="submit" ?$btn_name name="{$btn_name}" value="{$btn_value}"$btn_name? class="button ?$btn_primary button-primary$btn_primary?" ?$btn_disabled disabled$btn_disabled? ?$btn_title title="{$btn_title}"$btn_title? ?$btn_action data-gachireai-ajax="{$btn_action}"$btn_action? ?$btn_testing data-gachireai-testing="1"$btn_testing?>{% partials/button-icon.dv %}{$btn_label}</button>
+				[/$section_buttons]
+				?$section_note
+				<span class="gachireai-section__note">{$section_note}</span>
+				$section_note?
+			</div>
+			<div class="gachireai-section__messages">
+				?$section_messages
+				[$section_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_links
+<br>[$msg_links]<span class="gachireai-notice__link"><a href="{$url}">{$label}</a></span>[/$msg_links]$msg_links?</p></div>
+				[/$section_messages]
+				$section_messages?
+			</div>
+		</footer>
+		$section_buttons?
+	</section>
+	[/$sections]
+	$sections?
+	?$form_messages
+	<div class="gachireai-form__messages">
+	[$form_messages]
+	<div class="notice notice-{$msg_type}"><p>{$msg_text}?$msg_links
+<br>[$msg_links]<span class="gachireai-notice__link"><a href="{$url}">{$label}</a></span>[/$msg_links]$msg_links?</p></div>
+	[/$form_messages]
+	</div>
+	$form_messages?
+	?$submit_label
+	<p class="submit"><button type="submit" class="button button-primary" ?$submit_action data-gachireai-ajax="{$submit_action}"$submit_action? ?$submit_testing data-gachireai-testing="1"$submit_testing?>{$submit_label}</button></p>
+	$submit_label?
+	{% partials/scope-mixed-modal.dv %}
+</form>

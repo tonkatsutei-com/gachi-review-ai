@@ -1,0 +1,4 @@
+
+?$image_url
+<figure class="wp-block-image size-medium"><img src="{$image_url}" alt="{$image_alt}"/></figure>
+$image_url?

@@ -1,0 +1,76 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	?$common_switch
+	<section class="gachireai-section" id="gachireai-section-scraping-common">
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$common_switch_title}</h2>
+			?$common_switch_description
+			<p class="gachireai-section__desc">{$common_switch_description}</p>
+			$common_switch_description?
+		</header>
+		<div class="gachireai-section__main">
+			<form method="post" action="{$common_switch_action}">
+				?$common_switch_hidden
+				[$common_switch_hidden]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$common_switch_hidden]
+				$common_switch_hidden?
+				<div class="gachireai-section__switch">
+					[$common_switch]
+					{% partials/field-inline.dv %}
+					[/$common_switch]
+				</div>
+				<p class="submit"><button type="submit" class="button button-primary">{$common_switch_save_label}</button></p>
+			</form>
+		</div>
+	</section>
+	$common_switch?
+	?$tag_descriptions
+	<div class="gachireai-scraping-legend">
+		[$tag_descriptions]
+		<div class="gachireai-scraping-legend__item">
+			<span class="gachireai-scraping-tag gachireai-scraping-tag--{$tag_key}">{$tag_label}</span>
+			<span class="gachireai-scraping-legend__desc">{$tag_description}</span>
+		</div>
+		[/$tag_descriptions]
+	</div>
+	$tag_descriptions?
+	?$sections
+	[$sections]
+	<section class="gachireai-section" id="gachireai-section-{$section_key}">
+		{% partials/scraping-section-head.dv %}
+		<div class="gachireai-section__main">
+			<form method="post" action="{$form_action}">
+				?$hidden_fields
+				[$hidden_fields]
+				<input type="hidden" name="{$name}" value="{$value}">
+				[/$hidden_fields]
+				$hidden_fields?
+				<table class="form-table" role="presentation">
+					<tr class="gachireai-field" ?$common_target data-gachireai-common-target="{$common_target}"$common_target?>
+						<th scope="row"><label for="{$field_id}">{$field_label}</label></th>
+						<td>
+							<input type="text" id="{$field_id}" name="{$field_name}" value="{$field_value}" class="regular-text" autocomplete="off" spellcheck="false" ?$placeholder placeholder="{$placeholder}"$placeholder?>
+						</td>
+					</tr>
+				</table>
+				<p class="submit">
+					<button type="submit" class="button button-primary">{$save_label}</button>
+					?$status_text
+					<span class="description gachireai-scraping-status">{$status_text}</span>
+					$status_text?
+				</p>
+				?$messages
+				<div class="gachireai-section__messages">
+					[$messages]
+					<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+					[/$messages]
+				</div>
+				$messages?
+			</form>
+		</div>
+	</section>
+	[/$sections]
+	$sections?
+</div>

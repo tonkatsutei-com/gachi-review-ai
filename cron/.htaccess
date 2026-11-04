@@ -1,0 +1,14 @@
+# gachi-review-ai: サーバーcron 用ディレクトリへの HTTP 直アクセスを拒否する（403）。
+# 実行は CLI（cron/cron.sh → cron/index.php）のみを想定する（README「cron の実行経路」節）。
+# 本ファイルは機密値を含まないアクセス制御（.gitignore の `!cron/.htaccess` で追跡する）。
+
+# Apache 2.4 以降。
+<IfModule mod_authz_core.c>
+	Require all denied
+</IfModule>
+
+# Apache 2.2 系のフォールバック。
+<IfModule !mod_authz_core.c>
+	Order allow,deny
+	Deny from all
+</IfModule>

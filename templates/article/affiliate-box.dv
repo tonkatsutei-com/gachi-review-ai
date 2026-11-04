@@ -1,0 +1,48 @@
+
+<div class="gachireai-affiliate gachireai-affiliate--{$affiliate_pattern} ?$affiliate_cta gachireai-affiliate--cta$affiliate_cta?">
+	?$affiliate_title
+	<p class="gachireai-affiliate__title">{$affiliate_title}</p>
+	$affiliate_title?
+	<div class="gachireai-affiliate__card">
+		<div class="gachireai-affiliate__main">
+			?$affiliate_has_image
+			<div class="gachireai-affiliate__media">
+				?$affiliate_has_image_link
+				<a class="gachireai-affiliate__image-link" href="{$affiliate_image_link}" target="_blank" rel="nofollow sponsored noopener">
+				$affiliate_has_image_link?
+				<img class="gachireai-affiliate__image" src="{$affiliate_image_url}" alt="{$affiliate_product_name}" loading="lazy">
+				?$affiliate_has_image_link
+				</a>
+				$affiliate_has_image_link?
+			</div>
+			$affiliate_has_image?
+			<div class="gachireai-affiliate__body">
+				<p class="gachireai-affiliate__name">
+					?$affiliate_has_link
+					<a class="gachireai-affiliate__name-link" href="{$affiliate_link}" target="_blank" rel="nofollow sponsored noopener">{$affiliate_product_name}</a>
+					@else@
+					{$affiliate_product_name}
+					$affiliate_has_link?
+				</p>
+				?$affiliate_has_price
+				<p class="gachireai-affiliate__price">{$affiliate_price}?$affiliate_has_price_note<span class="gachireai-affiliate__price-note">?$affiliate_has_price_note_date<span class="gachireai-affiliate__price-note-line">{$affiliate_price_note_date}</span>$affiliate_has_price_note_date?<span class="gachireai-affiliate__price-note-line">{$affiliate_price_note_disclaimer}</span></span>$affiliate_has_price_note?</p>
+				$affiliate_has_price?
+			</div>
+		</div>
+		?$affiliate_searches
+		<ul class="gachireai-affiliate__searches">
+			[$affiliate_searches]
+			<li class="gachireai-affiliate__search-item ?$search_ec gachireai-affiliate__search-item--{$search_ec}$search_ec?">
+				<a class="gachireai-affiliate__search" href="{$search_url}" target="_blank" rel="nofollow sponsored noopener">
+					?$search_has_icon
+					<img class="gachireai-affiliate__search-icon" src="{$search_icon}" alt="" loading="lazy">
+					$search_has_icon?
+					<span class="gachireai-affiliate__search-label">{$search_label}</span>
+				</a>
+			</li>
+			[/$affiliate_searches]
+		</ul>
+		$affiliate_searches?
+	</div>
+	<p class="gachireai-affiliate__disclosure">{$affiliate_disclosure}</p>
+</div>

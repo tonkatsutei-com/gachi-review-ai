@@ -1,0 +1,10 @@
+
+<section class="gachireai-section" id="gachireai-section-site-create">
+	<header class="gachireai-section__header">
+		<h2 class="gachireai-section__title">{$site_create_title}</h2>
+		<p class="gachireai-section__desc gachireai-section__desc--preline">{$site_create_intro}</p>
+	</header>
+	<div class="gachireai-section__main">
+		{% site-create-form.dv %}
+	</div>
+</section>

@@ -1,0 +1,14 @@
+<div class="wrap gachireai-admin">
+	{% partials/page-head.dv %}
+	{% partials/tabs.dv %}
+	?$head_forms
+	[$head_forms]
+	{% partials/form-sections.dv %}
+	[/$head_forms]
+	$head_forms?
+	?$forms
+	[$forms]
+	{% partials/form-sections.dv %}
+	[/$forms]
+	$forms?
+</div>

@@ -1,0 +1,1 @@
+<div class="notice notice-{$type}"><p>{$text}</p></div>

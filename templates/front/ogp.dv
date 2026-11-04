@@ -1,0 +1,20 @@
+
+<meta property="og:type" content="{$og_type}">
+<meta property="og:title" content="{$og_title}">
+?$has_description
+<meta property="og:description" content="{$og_description}">
+$has_description?
+<meta property="og:url" content="{$og_url}">
+?$has_image
+<meta property="og:image" content="{$og_image}">
+$has_image?
+<meta property="og:site_name" content="{$og_site_name}">
+<meta property="og:locale" content="{$og_locale}">
+<meta name="twitter:card" content="{$twitter_card}">
+<meta name="twitter:title" content="{$og_title}">
+?$has_description
+<meta name="twitter:description" content="{$og_description}">
+$has_description?
+?$has_image
+<meta name="twitter:image" content="{$og_image}">
+$has_image?
