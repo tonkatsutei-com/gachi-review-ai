@@ -12,6 +12,7 @@ use Tonkatsutei\Gachi_Review_AI\Llm\Providers\Groq_Provider;
 use Tonkatsutei\Gachi_Review_AI\Llm\Providers\Openai_Provider;
 final class Manager {
 	private const JSON_INSTRUCTION = '出力は JSON オブジェクトだけにしてください（前後に説明文やコードフェンスを付けない）。';
+	private const JSON_MAX_TOKENS = 8192;
 	private const MAX_RETRIES = 2;
 	private static array $retry_delays = array( 2, 4 );
 	private static $progress_callback = null;
@@ -96,14 +97,42 @@ final class Manager {
 			return self::decode_json( (string) ( $result['content'] ?? '' ) );
 		} catch ( \RuntimeException $e ) {
 			unset( $opts['response_format'] );
-			$retry = self::generate_with_retry(
+			$retry_opts = self::widen_json_tokens( $opts, $result );
+			$retry      = self::generate_with_retry(
 				$provider,
 				$system,
 				$user . "\n\n" . self::JSON_INSTRUCTION . ' 前置き・説明・コードフェンス・思考過程を付けず、JSON オブジェクトだけを返してください。',
-				$opts
+				$retry_opts
 			);
-			return self::decode_json( (string) ( $retry['content'] ?? '' ) );
+			try {
+				return self::decode_json( (string) ( $retry['content'] ?? '' ) );
+			} catch ( \RuntimeException $inner ) {
+				throw new \RuntimeException( self::json_failure_message( $retry ) );
+			}
 		}
+	}
+	private static function widen_json_tokens( array $opts, array $result ): array {
+		$finish  = (string) ( $result['finish_reason'] ?? '' );
+		$content = trim( (string) ( $result['content'] ?? '' ) );
+		if ( 'length' !== $finish && '' !== $content ) {
+			return $opts;
+		}
+		$current = isset( $opts['max_tokens'] ) ? (int) $opts['max_tokens'] : 4000;
+		$opts['max_tokens'] = min( self::JSON_MAX_TOKENS, max( 4000, $current * 2 ) );
+		return $opts;
+	}
+	private static function json_failure_message( array $result ): string {
+		$finish = (string) ( $result['finish_reason'] ?? '' );
+		$length = strlen( trim( (string) ( $result['content'] ?? '' ) ) );
+		$hint = 'length' === $finish
+			? '応答がトークン上限で途中で切れました。モデルを変えるか、max_tokens を増やしてください。'
+			: 'モデルが JSON 以外の応答を返しました。モデルを変えて再試行してください。';
+		return sprintf(
+			'LLM の応答を JSON として解釈できませんでした（finish_reason=%1$s / 応答 %2$d 文字）。%3$s',
+			'' !== $finish ? $finish : 'unknown',
+			$length,
+			$hint
+		);
 	}
 	private static function decode_json( string $content ): array {
 		$text = trim( $content );

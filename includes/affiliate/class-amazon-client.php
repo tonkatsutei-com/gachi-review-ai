@@ -50,6 +50,26 @@ final class Amazon_Client {
 	public static function free_amzn_available(): bool {
 		return class_exists( self::FREE_AMZN_CLASS ) && method_exists( self::FREE_AMZN_CLASS, 'search' );
 	}
+	private static function free_amzn_has_usable_service(): bool {
+		if ( ! self::free_amzn_available() ) {
+			return false;
+		}
+		if ( method_exists( self::FREE_AMZN_CLASS, 'has_usable_service' ) ) {
+			return (bool) call_user_func( array( self::FREE_AMZN_CLASS, 'has_usable_service' ) );
+		}
+		if (
+			! method_exists( self::FREE_AMZN_CLASS, 'service_ids' )
+			|| ! method_exists( self::FREE_AMZN_CLASS, 'is_usable' )
+		) {
+			return false;
+		}
+		foreach ( (array) call_user_func( array( self::FREE_AMZN_CLASS, 'service_ids' ) ) as $service ) {
+			if ( (bool) call_user_func( array( self::FREE_AMZN_CLASS, 'is_usable' ), (string) $service ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
 	public static function backend( array $settings ): string {
 		if ( ! empty( $settings[ self::USE_FREE_AMZN_CREATORS ] ) && empty( $settings[ self::USE_CREATORS ] ) ) {
 			return self::BACKEND_FREE_AMZN;
@@ -151,6 +171,12 @@ final class Amazon_Client {
 				__( '検索キーワードが空のため検索できませんでした。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
+		if ( ! self::free_amzn_has_usable_service() ) {
+			return $this->search_result(
+				self::STATUS_MISSING_CONFIG,
+				__( 'Amazon の取得サービスが利用できません（API キーの保存と通信テストの成功が必要です）。', GACHIREAI_TEXT_DOMAIN )
+			);
+		}
 		$raw = $this->fetch( $keyword, $hits );
 		if ( array() === $raw ) {
 			return $this->search_result(
@@ -199,6 +225,27 @@ final class Amazon_Client {
 	public function test( array $settings ): array {
 		if ( self::BACKEND_CREATORS === self::backend( $settings ) ) {
 			return $this->test_creators( $settings );
+		}
+		if ( ! self::free_amzn_available() ) {
+			return array(
+				'type'      => 'warning',
+				'message'   => __( "Free Amzn Creators API が有効ではありません。\n姉妹プラグインを有効にするか、Amazon の使用APIを Creators API に切り替えてください。", GACHIREAI_TEXT_DOMAIN ),
+				'connected' => false,
+			);
+		}
+		if ( ! self::free_amzn_has_usable_service() ) {
+			return array(
+				'type'      => 'warning',
+				'message'   => __( "Amazon の取得サービスが利用できません（API キーの保存と通信テストの成功が必要です）。\nAmazon の取得サービスを設定してから、もう一度保存してください。", GACHIREAI_TEXT_DOMAIN ),
+				'connected' => false,
+			);
+		}
+		if ( '' === trim( (string) ( $settings['partner_tag'] ?? '' ) ) ) {
+			return array(
+				'type'      => 'warning',
+				'message'   => __( "パートナータグ（アソシエイトタグ）を入力してください。\nFree Amzn Creators API でも商品ボックスの作成に必要です。", GACHIREAI_TEXT_DOMAIN ),
+				'connected' => false,
+			);
 		}
 		return array(
 			'type'      => 'success',
@@ -384,7 +431,23 @@ final class Amazon_Client {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$body = (string) wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
-		if ( $code < 200 || $code >= 300 || ! is_array( $data ) || ! is_array( $data['searchResult'] ?? null ) ) {
+		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
+			return $this->search_result(
+				self::STATUS_API_ERROR,
+				sprintf(
+					__( 'Creators API の商品検索に失敗しました（HTTP %1$d）: %2$s', GACHIREAI_TEXT_DOMAIN ),
+					$code,
+					$this->mask( $this->detail( $data, $body ), $secrets )
+				)
+			);
+		}
+		if ( ! is_array( $data['searchResult'] ?? null ) ) {
+			if ( self::is_no_results( $data, $body ) ) {
+				return $this->search_result(
+					self::STATUS_NO_HIT,
+					__( 'Amazon で該当する商品が見つかりませんでした。', GACHIREAI_TEXT_DOMAIN )
+				);
+			}
 			return $this->search_result(
 				self::STATUS_API_ERROR,
 				sprintf(
@@ -486,7 +549,20 @@ final class Amazon_Client {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$body = (string) wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
-		if ( $code < 200 || $code >= 300 || ! is_array( $data ) || ! is_array( $data['searchResult'] ?? null ) ) {
+		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
+			return array(
+				'ok'      => false,
+				'message' => sprintf(
+					__( 'Creators API の商品検索に失敗しました（HTTP %1$d）: %2$s', GACHIREAI_TEXT_DOMAIN ),
+					$code,
+					$this->mask( $this->detail( $data, $body ), $secrets )
+				),
+			);
+		}
+		if ( ! is_array( $data['searchResult'] ?? null ) ) {
+			if ( self::is_no_results( $data, $body ) ) {
+				return array( 'ok' => true, 'message' => '' );
+			}
 			return array(
 				'ok'      => false,
 				'message' => sprintf(
@@ -529,6 +605,12 @@ final class Amazon_Client {
 		}
 		$text = trim( (string) preg_replace( '/\s+/u', ' ', wp_strip_all_tags( $body ) ) );
 		return '' !== $text ? $text : __( '応答本文が空でした。', GACHIREAI_TEXT_DOMAIN );
+	}
+	private static function is_no_results( $data, string $body ): bool {
+		$message = is_array( $data )
+			? (string) ( $data['message'] ?? '' ) . ' ' . (string) ( $data['reason'] ?? '' )
+			: '';
+		return 1 === preg_match( '/no results found|no results/i', $message . ' ' . mb_substr( $body, 0, 500 ) );
 	}
 	private function mask( string $message, array $secrets ): string {
 		foreach ( $secrets as $secret ) {

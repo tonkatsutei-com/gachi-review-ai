@@ -8,6 +8,14 @@ final class Media {
 		if ( '' === $data || '' === $mime ) {
 			throw new \RuntimeException( __( '保存する画像がありません。', GACHIREAI_TEXT_DOMAIN ) );
 		}
+		if ( ! function_exists( 'wp_upload_bits' ) || ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+			foreach ( array( 'file.php', 'media.php', 'image.php' ) as $include ) {
+				$path = ABSPATH . 'wp-admin/includes/' . $include;
+				if ( is_readable( $path ) ) {
+					require_once $path;
+				}
+			}
+		}
 		$filename = sanitize_file_name( $filename );
 		$upload   = wp_upload_bits( $filename, null, $data );
 		if ( ! is_array( $upload ) || ! empty( $upload['error'] ) ) {

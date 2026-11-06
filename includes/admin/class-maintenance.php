@@ -290,6 +290,15 @@ final class Maintenance extends Screen
 	}
 	private function apply_wp_settings(): void
 	{
+		if (! in_array('ja', get_available_languages(), true)) {
+			if (! function_exists('wp_download_language_pack')) {
+				require_once ABSPATH . 'wp-admin/includes/translation-install.php';
+			}
+			require_once ABSPATH . 'wp-admin/includes/file.php'; 
+			if (function_exists('wp_download_language_pack')) {
+				wp_download_language_pack('ja');
+			}
+		}
 		update_option('WPLANG', 'ja');
 		update_option('timezone_string', 'Asia/Tokyo');
 		update_option('date_format', 'Y年n月j日');

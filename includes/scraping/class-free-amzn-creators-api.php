@@ -349,6 +349,14 @@ class Free_Amzn_Creators_API {
     public static function last_reviews_from_cache(): bool {
         return self::$last_reviews_from_cache;
     }
+    public static function has_usable_service(): bool {
+        foreach (self::service_ids() as $service) {
+            if (self::is_usable($service)) {
+                return true;
+            }
+        }
+        return false;
+    }
     public static function is_usable(string $service): bool {
         $state = self::get_service($service);
         if ($state === [] || ($state['api_key'] ?? '') === '' || ($state['status'] ?? '') !== 'ok') {

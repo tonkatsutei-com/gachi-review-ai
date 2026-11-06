@@ -10,6 +10,14 @@ final class Processor {
 			throw new \RuntimeException( __( '加工する画像がありません。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		if ( ! function_exists( 'wp_tempnam' ) || ! function_exists( 'wp_get_image_editor' ) ) {
+			foreach ( array( 'file.php', 'image.php' ) as $include ) {
+				$path = ABSPATH . 'wp-admin/includes/' . $include;
+				if ( is_readable( $path ) ) {
+					require_once $path;
+				}
+			}
+		}
+		if ( ! function_exists( 'wp_tempnam' ) || ! function_exists( 'wp_get_image_editor' ) ) {
 			throw new \RuntimeException( __( '画像加工に必要な WordPress の機能がありません。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		$input = wp_tempnam( 'gachireai-in-' );
