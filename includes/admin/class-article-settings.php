@@ -934,7 +934,9 @@ final class Article_Settings extends Screen {
 			),
 			'auto_post_title'         => esc_html__( '自動投稿設定', GACHIREAI_TEXT_DOMAIN ),
 			'auto_post_anchor'        => esc_attr( 'auto_post_settings' ),
-			'auto_post_intro'         => esc_html__( '自動投稿機能はPROライセンスのみご利用いただけます。', GACHIREAI_TEXT_DOMAIN ),
+			'auto_post_intro'         => Status::capabilities()->can_use_cron()
+				? ''
+				: esc_html__( '自動投稿機能はPROライセンスのみご利用いただけます。', GACHIREAI_TEXT_DOMAIN ),
 			'auto_post_fields'        => $this->auto_post_form()->build_list( $this->auto_post_values(), array_keys( $this->auto_post_definitions() ), self::ARTICLE_GROUP ),
 			'auto_post_messages'      => array(),
 			'auto_post_submit_label'  => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
