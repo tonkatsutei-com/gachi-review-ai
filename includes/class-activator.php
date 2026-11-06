@@ -214,6 +214,27 @@ final class Activator {
 		}
 		$settings->set( 'common_overrides', $settings->common_overrides() );
 	}
+	public static function migrate_disclosure(): void {
+		$settings = new Settings();
+		$all      = $settings->all();
+		if ( ! empty( $all['disclosure_migrated'] ) ) {
+			return;
+		}
+		$image      = is_array( $all['image'] ?? null ) ? (array) $all['image'] : array();
+		$disclosure = is_array( $all['disclosure'] ?? null ) ? (array) $all['disclosure'] : array();
+		if ( array_key_exists( 'disclosure', $image ) && ! array_key_exists( 'image_enabled', $disclosure ) ) {
+			$disclosure['image_enabled'] = '1' === (string) $image['disclosure'] ? '1' : '0';
+		}
+		if ( array_key_exists( 'disclosure_text', $image ) && ! array_key_exists( 'image_text', $disclosure ) ) {
+			$disclosure['image_text'] = (string) $image['disclosure_text'];
+		}
+		$settings->set( 'disclosure', $disclosure );
+		$settings->set( 'disclosure_migrated', true );
+		if ( array_key_exists( 'disclosure', $image ) || array_key_exists( 'disclosure_text', $image ) ) {
+			unset( $image['disclosure'], $image['disclosure_text'] );
+			$settings->set( 'image', $image );
+		}
+	}
 	public static function migrate_verified_records(): void {
 		if ( '1' === get_option( self::VERIFIED_RECORDS_MIGRATED_OPTION ) ) {
 			return;

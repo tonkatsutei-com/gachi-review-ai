@@ -55,6 +55,19 @@ final class Connection_Status {
 		$values = (array) $store->get( $group, array() );
 		return max( 0, (int) ( $values[ self::KEY_REVOKED ] ?? 0 ) );
 	}
+	public static function preserve_record_keys( string $group, array $candidate, ?Settings $settings = null ): array {
+		if ( ! self::supports( $group ) ) {
+			return $candidate;
+		}
+		$store  = self::read_store( $group, $settings );
+		$values = (array) $store->get( $group, array() );
+		foreach ( array( self::KEY, self::KEY_REVOKED ) as $key ) {
+			if ( array_key_exists( $key, $values ) ) {
+				$candidate[ $key ] = $values[ $key ];
+			}
+		}
+		return $candidate;
+	}
 	public static function note_runtime_failure( string $group, int $status, ?Settings $settings = null ): void {
 		if ( ! self::supports( $group ) || ! in_array( $status, array( 401, 403 ), true ) ) {
 			return;

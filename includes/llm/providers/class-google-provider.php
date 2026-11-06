@@ -13,6 +13,7 @@ final class Google_Provider implements Provider {
 		'SAFETY'     => 'content_filter',
 		'RECITATION' => 'content_filter',
 	);
+	private const TIMEOUT = 120;
 	private string $api_key;
 	private string $model;
 	public function __construct( string $api_key, string $model = '' ) {
@@ -35,7 +36,7 @@ final class Google_Provider implements Provider {
 		$response = wp_remote_post(
 			self::ENDPOINT . rawurlencode( $this->model ) . ':generateContent',
 			array(
-				'timeout' => 120,
+				'timeout' => max( 1, (int) ( $opts['timeout'] ?? self::TIMEOUT ) ),
 				'headers' => array(
 					'x-goog-api-key' => $this->api_key,
 					'Content-Type'   => 'application/json',
@@ -44,7 +45,13 @@ final class Google_Provider implements Provider {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( 'Google AI Studio リクエストに失敗しました: ' . $response->get_error_message() );
+			throw new Provider_Exception(
+				sprintf(
+					__( "Google AI Studio に接続できませんでした（タイムアウトの可能性があります）。\n時間をおいて再試行するか、モデルを変えてください。\n%s", GACHIREAI_TEXT_DOMAIN ),
+					$response->get_error_message()
+				),
+				0
+			);
 		}
 		$body     = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		$candidate = is_array( $body ) && isset( $body['candidates'][0] ) ? (array) $body['candidates'][0] : array();

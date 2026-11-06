@@ -469,6 +469,16 @@
 		if ( button && button.name ) {
 			data.append( button.name, button.value );
 		}
+		if ( form.querySelector( '[name="site_images[top_eyecatch]"]' ) ) {
+			var site_name_input = document.querySelector( '[name="site_elements[site_name]"]' );
+			var site_desc_input = document.querySelector( '[name="site_elements[description]"]' );
+			if ( site_name_input ) {
+				data.append( 'site_name', site_name_input.value );
+			}
+			if ( site_desc_input ) {
+				data.append( 'site_description', site_desc_input.value );
+			}
+		}
 		if ( button ) {
 			button.disabled = true;
 			button.classList.add( 'gachireai-is-busy' );
@@ -588,7 +598,6 @@
 		} else if ( is_pick_current ) {
 			data.append( 'gachireai_category_id', button.getAttribute( 'data-gachireai-category-current-id' ) || '' );
 		}
-		modal.hidden = false;
 		button.disabled = true;
 		button.classList.add( 'gachireai-is-busy' );
 		window.fetch( config.ajaxUrl, {
@@ -610,6 +619,7 @@
 					return;
 				}
 				body.outerHTML = payload.data.html;
+				modal.hidden = false;
 			} )
 			.catch( function ( error ) {
 				report_error( error && error.message ? error.message : '' );
@@ -772,6 +782,10 @@
 		data.append( 'font_weight', weight );
 		var top_eyecatch = form.querySelector( 'input[name="site_images[top_eyecatch]"]' );
 		data.append( 'top_eyecatch', top_eyecatch ? top_eyecatch.value : '' );
+		var site_name_input = document.querySelector( '[name="site_elements[site_name]"]' );
+		var site_desc_input = document.querySelector( '[name="site_elements[description]"]' );
+		data.append( 'site_name', site_name_input ? site_name_input.value : '' );
+		data.append( 'site_description', site_desc_input ? site_desc_input.value : '' );
 		if ( font_preview_timer ) {
 			window.clearTimeout( font_preview_timer );
 		}

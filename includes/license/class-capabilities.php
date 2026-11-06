@@ -49,7 +49,7 @@ final class Capabilities {
 	}
 	public function allowed_article_types(): array {
 		if ( $this->is_free() ) {
-			return array( 'summary' );
+			return array( 'quote' );
 		}
 		if ( $this->is_pro() ) {
 			return array_merge( self::ARTICLE_TYPES, self::PRO_ARTICLE_TYPES );

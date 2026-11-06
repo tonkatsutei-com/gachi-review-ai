@@ -16,7 +16,7 @@ final class Product_Identifier {
 		return '' !== (string) ( $this->llm['api_key'] ?? '' );
 	}
 	public static function unavailable_message(): string {
-		return __( 'API キーが未設定のため商品の特定は使えません。「LLM設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
+		return __( 'API キーが未設定のため商品の特定は使えません。「AI設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
 	}
 	public function identify( string $title, string $selftext = '' ): array {
 		if ( ! $this->is_available() ) {

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Ec;
 use Tonkatsutei\Gachi_Review_AI\Activator;
+use Tonkatsutei\Gachi_Review_AI\Affiliate\Amazon_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Rakuten_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Yahoo_Client;
 use Tonkatsutei\Gachi_Review_AI\Settings;
@@ -38,11 +39,14 @@ final class Genre_Catalog {
 	private Rakuten_Client $rakuten;
 	private Yahoo_Client $yahoo;
 	private Product_Selector $selector;
-	public function __construct( ?Settings $settings = null, ?Rakuten_Client $rakuten = null, ?Yahoo_Client $yahoo = null, ?Product_Selector $selector = null ) {
+	private ?Amazon_Category_Gateway $gateway = null;
+	private Amazon_Client $amazon;
+	public function __construct( ?Settings $settings = null, ?Rakuten_Client $rakuten = null, ?Yahoo_Client $yahoo = null, ?Product_Selector $selector = null, ?Amazon_Client $amazon = null ) {
 		$this->settings = $settings ?? new Settings();
 		$this->rakuten  = $rakuten ?? new Rakuten_Client();
 		$this->yahoo    = $yahoo ?? new Yahoo_Client();
 		$this->selector = $selector ?? new Product_Selector( $this->settings, $this->rakuten, $this->yahoo );
+		$this->amazon   = $amazon ?? new Amazon_Client();
 	}
 	public function ec(): string {
 		return $this->selector->ec();
@@ -156,7 +160,7 @@ final class Genre_Catalog {
 		global $wpdb;
 		$ec = Product_Selector::normalize_ec( $ec );
 		if ( Product_Selector::EC_AMAZON === $ec ) {
-			$nodes = self::amazon_nodes();
+			$nodes = $this->amazon_nodes();
 			return $limit > 0 ? array_slice( $nodes, 0, $limit ) : $nodes;
 		}
 		$sql    = 'SELECT genre_id, name, level FROM ' . Activator::table( 'genres' ) . ' WHERE ec = %s AND level >= 1 ORDER BY level ASC, name ASC';
@@ -242,7 +246,7 @@ final class Genre_Catalog {
 		$ec  = Product_Selector::normalize_ec( $ec );
 		$nav = $this->nav_parent( $ec, $parent_id );
 		if ( Product_Selector::EC_AMAZON === $ec ) {
-			return self::amazon_children( $nav );
+			return $this->amazon_children( $nav );
 		}
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
@@ -265,7 +269,7 @@ final class Genre_Catalog {
 	public function find( string $ec, string $genre_id ): array {
 		$ec = Product_Selector::normalize_ec( $ec );
 		if ( Product_Selector::EC_AMAZON === $ec ) {
-			return self::amazon_find( $genre_id );
+			return $this->amazon_find( $genre_id );
 		}
 		global $wpdb;
 		$genre_id = $this->clip( $this->resolve_id( $ec, $genre_id ), self::ID_MAX );
@@ -556,7 +560,7 @@ final class Genre_Catalog {
 		}
 		$wpdb->query( $wpdb->prepare( $sql, array_merge( array( $ec, $nav ), $keep ) ) );
 	}
-	private static function amazon_find( string $genre_id ): array {
+	private function amazon_find( string $genre_id ): array {
 		$genre_id = trim( $genre_id );
 		if ( '' === $genre_id ) {
 			return array(
@@ -568,7 +572,7 @@ final class Genre_Catalog {
 				'fetched_at' => '',
 			);
 		}
-		foreach ( self::amazon_tree() as $node ) {
+		foreach ( $this->amazon_tree() as $node ) {
 			if ( $node['genre_id'] === $genre_id ) {
 				return array(
 					'ec'         => Product_Selector::EC_AMAZON,
@@ -580,60 +584,263 @@ final class Genre_Catalog {
 				);
 			}
 		}
+		if ( Amazon_Client::BACKEND_CREATORS === $this->amazon_backend() ) {
+			$settings = (array) $this->settings->get( 'amazon', array() );
+			$raw      = $this->amazon->browse_nodes( $settings, array( $genre_id ), 'ancestor' );
+			if ( array() !== $raw ) {
+				$node = $raw[0];
+				$raw_level   = 1;
+				$wrapper_cnt = 0;
+				$ancestor    = $node['ancestor'] ?? null;
+				while ( is_array( $ancestor ) ) {
+					$raw_level++;
+					if ( self::amazon_is_wrapper( (string) ( $ancestor['displayName'] ?? '' ) ) ) {
+						$wrapper_cnt++;
+					}
+					$ancestor = $ancestor['ancestor'] ?? null;
+				}
+				return array(
+					'ec'         => Product_Selector::EC_AMAZON,
+					'parent_id'  => (string) ( $node['ancestor']['id'] ?? '' ),
+					'genre_id'   => (string) ( $node['id'] ?? $genre_id ),
+					'name'       => (string) ( $node['displayName'] ?? '' ),
+					'level'      => max( 1, $raw_level - $wrapper_cnt ),
+					'fetched_at' => '',
+				);
+			}
+			return array();
+		}
+		try {
+			$resolved = $this->gateway()->resolve( $genre_id );
+		} catch ( \RuntimeException $e ) {
+			$resolved = array();
+		}
+		if ( array() !== $resolved ) {
+			return array(
+				'ec'         => Product_Selector::EC_AMAZON,
+				'parent_id'  => (string) ( $resolved['parent_id'] ?? '' ),
+				'genre_id'   => (string) ( $resolved['genre_id'] ?? '' ),
+				'name'       => (string) ( $resolved['name'] ?? '' ),
+				'level'      => (int) ( $resolved['level'] ?? 3 ),
+				'fetched_at' => '',
+			);
+		}
 		return array();
 	}
-	private static function amazon_tree(): array {
+	private function amazon_tree(): array {
 		static $nodes = null;
 		if ( is_array( $nodes ) ) {
 			return $nodes;
 		}
 		$nodes = array();
-		$path  = GACHIREAI_PLUGIN_DIR . 'includes/data/amazon-categories.json';
-		if ( ! is_readable( $path ) ) {
-			return $nodes;
-		}
-		$data = json_decode( (string) file_get_contents( $path ), true );
-		if ( ! is_array( $data ) ) {
-			return $nodes;
-		}
-		foreach ( $data as $top ) {
-			if ( ! is_array( $top ) ) {
-				continue;
-			}
-			$id   = trim( (string) ( $top['node'] ?? '' ) );
-			$name = trim( (string) ( $top['name'] ?? '' ) );
-			if ( '' === $id ) {
-				continue;
-			}
-			$nodes[] = array(
-				'genre_id'  => $id,
-				'name'      => $name,
-				'parent_id' => '',
-				'level'     => 1,
-			);
-			foreach ( (array) ( $top['children'] ?? array() ) as $child ) {
-				if ( ! is_array( $child ) ) {
-					continue;
-				}
-				$child_id   = trim( (string) ( $child['node'] ?? '' ) );
-				$child_name = trim( (string) ( $child['name'] ?? '' ) );
-				if ( '' === $child_id ) {
-					continue;
-				}
-				$nodes[] = array(
-					'genre_id'  => $child_id,
-					'name'      => $child_name,
-					'parent_id' => $id,
-					'level'     => 2,
-				);
+		if ( Amazon_Client::BACKEND_CREATORS === $this->amazon_backend() ) {
+			$nodes = $this->amazon_direct_tree();
+		} else {
+			try {
+				$nodes = $this->gateway()->tree();
+			} catch ( \RuntimeException $e ) {
+				$nodes = array();
 			}
 		}
 		return $nodes;
 	}
-	private static function amazon_nodes(): array {
+	private function amazon_backend(): string {
+		return Amazon_Client::backend( (array) $this->settings->get( 'amazon', array() ) );
+	}
+	public function depth_limit( string $ec ): int {
+		if ( Product_Selector::EC_AMAZON !== Product_Selector::normalize_ec( $ec ) ) {
+			return 0;
+		}
+		if ( Amazon_Client::BACKEND_CREATORS === $this->amazon_backend() ) {
+			return 0;
+		}
+		return Amazon_Category_Gateway::LEVEL_MAX;
+	}
+	private const AMAZON_EXCLUDED_NAMES = array(
+		'Arborist Merchandising Root',
+		'Featured Categories',
+		'Specialty Boutique',
+		'Camera & Photo Features',
+		'Household Appliances Features',
+		'Alcohol Features',
+		'Custom Stores',
+		'Specialty Stores',
+		'Self Service',
+		'スペシャルフィーチャー',
+		'Special',
+	);
+	private const AMAZON_WRAPPER_NAMES = array(
+		'カテゴリー別',
+		'ジャンル別',
+		'機種別',
+		'Subjects',
+	);
+	private const AMAZON_TREE_CACHE_KEY = 'gachireai_amazon_direct_tree_v3';
+	private const AMAZON_KIDS_CACHE_PREFIX = 'gachireai_amazon_kids_v1_';
+	private static function amazon_is_excluded( string $name ): bool {
+		return in_array( trim( $name ), self::AMAZON_EXCLUDED_NAMES, true );
+	}
+	private static function amazon_is_wrapper( string $name ): bool {
+		$name = trim( $name );
+		if ( in_array( $name, self::AMAZON_WRAPPER_NAMES, true ) ) {
+			return true;
+		}
+		return '別' === mb_substr( $name, -1 );
+	}
+	private function amazon_flatten_children( array $children ): array {
+		$wrappers = array();
+		foreach ( $children as $child ) {
+			if ( is_array( $child ) && self::amazon_is_wrapper( (string) ( $child['displayName'] ?? '' ) ) ) {
+				$wrappers[] = $child;
+			}
+		}
+		$out = array();
+		if ( array() !== $wrappers ) {
+			$settings = (array) $this->settings->get( 'amazon', array() );
+			foreach ( $wrappers as $wrapper ) {
+				$wrapper_id = trim( (string) ( $wrapper['id'] ?? '' ) );
+				if ( '' === $wrapper_id ) {
+					continue;
+				}
+				foreach ( $this->amazon->browse_nodes( $settings, array( $wrapper_id ), 'children' ) as $node ) {
+					$out = array_merge( $out, $this->amazon_flatten_children( (array) ( $node['children'] ?? array() ) ) );
+				}
+			}
+			return $out;
+		}
+		foreach ( $children as $child ) {
+			if ( ! is_array( $child ) ) {
+				continue;
+			}
+			$id   = trim( (string) ( $child['id'] ?? '' ) );
+			$name = (string) ( $child['displayName'] ?? '' );
+			if ( '' === $id || self::amazon_is_excluded( $name ) ) {
+				continue;
+			}
+			$out[] = array( 'id' => $id, 'name' => $name );
+		}
+		return $out;
+	}
+	private function amazon_direct_tree(): array {
+		$cached = get_transient( self::AMAZON_TREE_CACHE_KEY );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+		$tree = array();
+		try {
+			foreach ( $this->gateway()->children( '', 1 ) as $level1 ) {
+				$tree[] = array(
+					'genre_id'  => (string) $level1['id'],
+					'name'      => (string) $level1['name'],
+					'parent_id' => '',
+					'level'     => 1,
+				);
+			}
+		} catch ( \RuntimeException $e ) {
+			return array();
+		}
+		$root_ids = array_column( $tree, 'genre_id' );
+		if ( array() === $root_ids ) {
+			return $tree;
+		}
+		$settings = (array) $this->settings->get( 'amazon', array() );
+		$raw = array();
+		$ok  = true;
+		foreach ( array_chunk( $root_ids, 10 ) as $batch ) {
+			$nodes = $this->amazon->browse_nodes( $settings, $batch, 'children' );
+			if ( array() === $nodes ) {
+				$ok = false;
+				continue;
+			}
+			foreach ( $nodes as $node ) {
+				$rid = (string) ( $node['id'] ?? '' );
+				if ( '' !== $rid ) {
+					$raw[ $rid ] = (array) ( $node['children'] ?? array() );
+				}
+			}
+		}
+		$wrapper_ids = array();
+		foreach ( $root_ids as $rid ) {
+			foreach ( self::amazon_wrapper_ids( (array) ( $raw[ $rid ] ?? array() ) ) as $wid ) {
+				$wrapper_ids[ $wid ] = true;
+			}
+		}
+		$wrapper_raw = array();
+		foreach ( array_chunk( array_keys( $wrapper_ids ), 10 ) as $batch ) {
+			$nodes = $this->amazon->browse_nodes( $settings, $batch, 'children' );
+			if ( array() === $nodes ) {
+				$ok = false;
+				continue;
+			}
+			foreach ( $nodes as $node ) {
+				$wid = (string) ( $node['id'] ?? '' );
+				if ( '' !== $wid ) {
+					$wrapper_raw[ $wid ] = (array) ( $node['children'] ?? array() );
+				}
+			}
+		}
+		foreach ( $root_ids as $rid ) {
+			$children = (array) ( $raw[ $rid ] ?? array() );
+			$wids     = self::amazon_wrapper_ids( $children );
+			if ( array() !== $wids ) {
+				foreach ( $wids as $wid ) {
+					foreach ( self::amazon_real_children( (array) ( $wrapper_raw[ $wid ] ?? array() ) ) as $child ) {
+						$tree[] = array(
+							'genre_id'  => $child['id'],
+							'name'      => $child['name'],
+							'parent_id' => $rid,
+							'level'     => 2,
+						);
+					}
+				}
+			} else {
+				foreach ( self::amazon_real_children( $children ) as $child ) {
+					$tree[] = array(
+						'genre_id'  => $child['id'],
+						'name'      => $child['name'],
+						'parent_id' => $rid,
+						'level'     => 2,
+					);
+				}
+			}
+		}
+		if ( $ok ) {
+			set_transient( self::AMAZON_TREE_CACHE_KEY, $tree, 86400 );
+		}
+		return $tree;
+	}
+	private static function amazon_wrapper_ids( array $children ): array {
+		$ids = array();
+		foreach ( $children as $child ) {
+			if ( ! is_array( $child ) || ! self::amazon_is_wrapper( (string) ( $child['displayName'] ?? '' ) ) ) {
+				continue;
+			}
+			$id = trim( (string) ( $child['id'] ?? '' ) );
+			if ( '' !== $id ) {
+				$ids[] = $id;
+			}
+		}
+		return $ids;
+	}
+	private static function amazon_real_children( array $children ): array {
+		$out = array();
+		foreach ( $children as $child ) {
+			if ( ! is_array( $child ) ) {
+				continue;
+			}
+			$id   = trim( (string) ( $child['id'] ?? '' ) );
+			$name = (string) ( $child['displayName'] ?? '' );
+			if ( '' === $id || self::amazon_is_excluded( $name ) ) {
+				continue;
+			}
+			$out[] = array( 'id' => $id, 'name' => $name );
+		}
+		return $out;
+	}
+	private function amazon_nodes(): array {
 		$nodes = array();
 		$seen  = array();
-		foreach ( self::amazon_tree() as $node ) {
+		foreach ( $this->amazon_tree() as $node ) {
 			if ( isset( $seen[ $node['genre_id'] ] ) ) {
 				continue;
 			}
@@ -646,19 +853,85 @@ final class Genre_Catalog {
 		}
 		return $nodes;
 	}
-	private static function amazon_children( string $parent_id ): array {
+	private function amazon_children( string $parent_id ): array {
 		$parent_id = trim( $parent_id );
-		$children  = array();
-		foreach ( self::amazon_tree() as $node ) {
-			if ( $node['parent_id'] === $parent_id ) {
+		if ( '' === $parent_id ) {
+			$children = array();
+			foreach ( $this->amazon_tree() as $node ) {
 				$children[] = array(
 					'genre_id' => $node['genre_id'],
 					'name'     => $node['name'],
-					'level'    => $node['level'],
+					'level'    => (int) $node['level'],
 				);
 			}
+			return $children;
 		}
-		return $children;
+		if ( Amazon_Client::BACKEND_CREATORS === $this->amazon_backend() ) {
+			$cached = get_transient( self::AMAZON_KIDS_CACHE_PREFIX . md5( $parent_id ) );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
+		}
+		$level = 0;
+		foreach ( $this->amazon_tree() as $node ) {
+			if ( $node['genre_id'] === $parent_id ) {
+				$level = (int) $node['level'];
+				break;
+			}
+		}
+		if ( 0 === $level ) {
+			$found = $this->amazon_find( $parent_id );
+			$level = (int) ( $found['level'] ?? 0 );
+		}
+		$child_level = max( 1, $level + 1 );
+		if ( 1 === $level ) {
+			$children = array();
+			foreach ( $this->amazon_tree() as $node ) {
+				if ( $node['parent_id'] === $parent_id ) {
+					$children[] = array(
+						'genre_id' => $node['genre_id'],
+						'name'     => $node['name'],
+						'level'    => (int) $node['level'],
+					);
+				}
+			}
+			return $children;
+		}
+		if ( Amazon_Client::BACKEND_CREATORS === $this->amazon_backend() ) {
+			$settings = (array) $this->settings->get( 'amazon', array() );
+			$children = array();
+			foreach ( $this->amazon->browse_nodes( $settings, array( $parent_id ), 'children' ) as $node ) {
+				foreach ( $this->amazon_flatten_children( (array) ( $node['children'] ?? array() ) ) as $child ) {
+					$children[] = array( 'genre_id' => $child['id'], 'name' => $child['name'], 'level' => $child_level );
+				}
+			}
+			if ( array() !== $children ) {
+				set_transient( self::AMAZON_KIDS_CACHE_PREFIX . md5( $parent_id ), $children, 86400 );
+			}
+			return $children;
+		}
+		if ( $child_level > Amazon_Category_Gateway::LEVEL_MAX ) {
+			return array();
+		}
+		try {
+			$children = array();
+			foreach ( $this->gateway()->children( $parent_id, $child_level ) as $child ) {
+				$children[] = array(
+					'genre_id' => (string) $child['id'],
+					'name'     => (string) $child['name'],
+					'level'    => $child_level,
+				);
+			}
+			return $children;
+		} catch ( \RuntimeException $e ) {
+			return array();
+		}
+	}
+	private function gateway(): Amazon_Category_Gateway {
+		if ( null === $this->gateway ) {
+			$this->gateway = new Amazon_Category_Gateway();
+		}
+		return $this->gateway;
 	}
 	private function now(): string {
 		return current_datetime()->format( 'Y-m-d H:i:s' );

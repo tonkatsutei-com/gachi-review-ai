@@ -1,4 +1,4 @@
-?$scope_mixed
+?$show_scope_dialog
 <div class="gachireai-modal gachireai-modal--reset" data-gachireai-scope-dialog>
 	<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-scope-mixed-title">
 		<h3 class="gachireai-modal__title" id="gachireai-scope-mixed-title">{$scope_mixed_title}</h3>
@@ -16,4 +16,4 @@
 		</p>
 	</div>
 </div>
-$scope_mixed?
+$show_scope_dialog?

@@ -5,6 +5,7 @@ use Tonkatsutei\Gachi_Review_AI\Affiliate\Amazon_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Rakuten_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Yahoo_Client;
+use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Image\Manager as Image_Manager;
@@ -14,6 +15,7 @@ use Tonkatsutei\Gachi_Review_AI\Llm\Jev_Client;
 use Tonkatsutei\Gachi_Review_AI\Llm\Manager;
 use Tonkatsutei\Gachi_Review_AI\Llm\Model_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Settings;
+use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 final class Api_Affiliate extends Screen
 {
 	public const TAB_LLM = 'llm';
@@ -52,6 +54,7 @@ final class Api_Affiliate extends Screen
 	private const TEST_MESSAGE_MAX = 300;
 	private const TEST_PROMPT = '「OK」とだけ返してください。';
 	private const TEST_MAX_TOKENS = 1024;
+	private const TEST_TIMEOUT = 30;
 	public function render(): void
 	{
 		if (! current_user_can('manage_options')) {
@@ -98,6 +101,7 @@ final class Api_Affiliate extends Screen
 	}
 	private function save_and_test(string $key): array
 	{
+		delete_transient( self::TEST_TRANSIENT_PREFIX . get_current_user_id() );
 		$this->apply_common_switch($key);
 		if (self::KEY_LLM === $key) {
 			return $this->save_llm_form();
@@ -141,6 +145,7 @@ final class Api_Affiliate extends Screen
 		$settings = new Settings();
 		$posted   = $this->posted(self::KEY_EC);
 		$current  = (array) $settings->get(self::KEY_EC, array());
+		$old_ec   = (string) ($current['ec'] ?? '');
 		$clean    = $this->sanitize(self::KEY_EC, $posted, $current);
 		$clean['selection'] = Product_Selector::normalize_selection(
 			$this->current_ec(),
@@ -148,6 +153,16 @@ final class Api_Affiliate extends Screen
 			$settings
 		);
 		$settings->set(self::KEY_EC, array_merge($current, $clean));
+		$new_ec = (string) ($clean['ec'] ?? $old_ec);
+		if ('' !== $new_ec && $old_ec !== $new_ec) {
+			$notice = $this->ec_changed_category_notice($new_ec);
+			if (null !== $notice) {
+				return array(
+					'test'  => $notice,
+					'saved' => true,
+				);
+			}
+		}
 		return array(
 			'test'  => array(
 				'type'    => 'success',
@@ -155,6 +170,42 @@ final class Api_Affiliate extends Screen
 			),
 			'saved' => true,
 		);
+	}
+	private function ec_changed_category_notice(string $ec): ?array
+	{
+		$scope = (new Site_Profile())->get_scope();
+		$type  = (string) ($scope['site_type'] ?? Site_Profile::DEFAULT_SITE_TYPE);
+		$text  = (string) ($scope['category'] ?? '');
+		$foreign = array();
+		if ('general' !== $type && '' !== trim($text)) {
+			$foreign = (new Genre_Catalog())->foreign_entries($ec, $text);
+		}
+		if (! self::needs_ec_category_notice($type, $text, array() !== $foreign)) {
+			return null;
+		}
+		return array(
+			'type'    => 'warning',
+			'message' => sprintf(
+				__('「サイト設定」>「取り扱い商品」>「カテゴリー」に、%s以外のカテゴリーが設定されています。', GACHIREAI_TEXT_DOMAIN),
+				Product_Selector::ec_label($ec)
+			),
+			'links'   => array(
+				array(
+					'url'   => esc_url(Tabs::url(Tabs::TAB_SITE) . '#gachireai-section-scope'),
+					'label' => esc_html__('🔗カテゴリー編集画面', GACHIREAI_TEXT_DOMAIN),
+				),
+			),
+		);
+	}
+	private static function needs_ec_category_notice(string $site_type, string $category, bool $has_foreign): bool
+	{
+		if ('general' === $site_type) {
+			return false;
+		}
+		if ('' === trim($category)) {
+			return false;
+		}
+		return $has_foreign;
 	}
 	private function save_llm_form(): array
 	{
@@ -172,8 +223,8 @@ final class Api_Affiliate extends Screen
 		foreach (array_keys($providers) as $provider) {
 			$entry = array(
 				'provider' => (string) $provider,
-				'api_key'  => (string) ($clean['api_key_' . $provider] ?? ''),
-				'model'    => (string) ($clean['model_' . $provider] ?? ''),
+				'api_key'  => Settings::trim_secret((string) ($clean['api_key_' . $provider] ?? '')),
+				'model'    => Settings::trim_secret((string) ($clean['model_' . $provider] ?? '')),
 			);
 			if ('' === $entry['api_key'] && '' === $entry['model']) {
 				unset($entries[$provider]);
@@ -348,9 +399,12 @@ final class Api_Affiliate extends Screen
 		if ($result['saved']) {
 			$this->record_setting_save(Tabs::label($this->tab_of($key)));
 		}
-		$messages = '' === trim((string) $result['test']['message'])
-			? array()
-			: array($this->message((string) $result['test']['type'], esc_html((string) $result['test']['message'])));
+		$messages = array();
+		if ('' !== trim((string) $result['test']['message'])) {
+			$message              = $this->message((string) $result['test']['type'], esc_html((string) $result['test']['message']));
+			$message['msg_links'] = (array) ($result['test']['links'] ?? array());
+			$messages[]           = $message;
+		}
 		if (! $this->is_implemented($key)) {
 			$footer = $messages;
 		} elseif ($result['saved']) {
@@ -456,6 +510,7 @@ final class Api_Affiliate extends Screen
 				array(
 					'temperature' => 0.0,
 					'max_tokens'  => self::TEST_MAX_TOKENS,
+					'timeout'     => self::TEST_TIMEOUT,
 				)
 			);
 			$content = trim((string) ($response['content'] ?? ''));
@@ -675,7 +730,7 @@ final class Api_Affiliate extends Screen
 			return __('記事の生成に使う文章生成AIの設定です。', GACHIREAI_TEXT_DOMAIN);
 		}
 		if (self::KEY_JEV === $key) {
-			return __('レビューを判定する判定AIの設定です。', GACHIREAI_TEXT_DOMAIN);
+			return __('レビューを判定する判定AI（Jev）の設定です。判定AI（Jev）を使うと、収集したレビューを「採用・保留・除外」に自動判定でき、記事に使う素材の品質を保てます（商品に無関係な投稿・宣伝目的の投稿などを除外。判定専用AIのため高速・低コスト）。判定AI（Jev）は安価な有料サービスです（利用には Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。', GACHIREAI_TEXT_DOMAIN);
 		}
 		if (self::KEY_IMAGE === $key) {
 			return __("ファビコン・プロフィール画像・アイキャッチなどの生成に使う画像生成AIの設定です。\n画像生成は PRO, BASIC ライセンスのみです（BASIC は一部制限あり）。", GACHIREAI_TEXT_DOMAIN);
@@ -1031,6 +1086,7 @@ final class Api_Affiliate extends Screen
 				'type'        => 'password',
 				'max'         => 200,
 				'field_disabled' => $disabled,
+				'description' => __('判定AI（Jev）は安価な有料サービスです（任意設定）。API キーは Jev（typesafe.ai）で取得してください。未設定でもレビューの収集・記事生成は行われます。', GACHIREAI_TEXT_DOMAIN),
 			),
 			'model'   => array(
 				'label'       => __('モデル', GACHIREAI_TEXT_DOMAIN),

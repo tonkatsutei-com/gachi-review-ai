@@ -5,21 +5,17 @@ use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\Template\Div_Renderer;
 final class Eyecatch_Shortcode {
 	public const TAG_IMAGE = 'gachireai_eyecatch';
-	public const TAG_NOTICE = 'gachireai_eyecatch_notice';
 	public const META_ATTACHMENT_ID = 'gachireai_eyecatch_attachment_id';
 	private const TEMPLATE_BLOCK = 'article/block-shortcode';
 	public static function register(): void {
 		add_shortcode( self::TAG_IMAGE, array( self::class, 'render_image' ) );
-		add_shortcode( self::TAG_NOTICE, array( self::class, 'render_notice' ) );
 	}
 	public static function prefix_blocks(): string {
 		try {
-			$image  = self::shortcode_block( '[' . self::TAG_IMAGE . ']' );
-			$notice = self::shortcode_block( '[' . self::TAG_NOTICE . ']' );
+			return self::shortcode_block( '[' . self::TAG_IMAGE . ']' );
 		} catch ( \Throwable $e ) {
 			return '';
 		}
-		return trim( $image . "\n\n" . $notice );
 	}
 	public static function render_image( $atts = array(), $content = null, $tag = '' ): string {
 		$settings = new Settings();
@@ -46,29 +42,6 @@ final class Eyecatch_Shortcode {
 					array(
 						'image_url' => esc_url( $url ),
 						'image_alt' => esc_attr( (string) get_the_title( $post_id ) ),
-					)
-				)
-			);
-		} catch ( \Throwable $e ) {
-			return '';
-		}
-	}
-	public static function render_notice( $atts = array(), $content = null, $tag = '' ): string {
-		$settings = new Settings();
-		$image    = $settings->image();
-		if ( '1' !== $image['disclosure'] ) {
-			return '';
-		}
-		$text = trim( (string) ( $image['disclosure_text'] ?? '' ) );
-		if ( '' === $text ) {
-			$text = Settings::DEFAULT_DISCLOSURE_TEXT;
-		}
-		try {
-			return trim(
-				( new Div_Renderer() )->render(
-					'article/eyecatch-notice',
-					array(
-						'notice_text' => esc_html( $text ),
 					)
 				)
 			);

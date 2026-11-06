@@ -18,7 +18,7 @@ final class Source_Selector {
 		return '' !== (string) ( $this->llm['api_key'] ?? '' );
 	}
 	public static function unavailable_message(): string {
-		return __( 'API キーが未設定のため検索先の提案は使えません。「LLM設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
+		return __( 'API キーが未設定のため検索先の提案は使えません。「AI設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
 	}
 	public static function subreddit_catalog(): array {
 		static $cached = null;
@@ -114,7 +114,8 @@ final class Source_Selector {
 			}
 		}
 		$parts[] = "【カテゴリーと板の一覧】\n" . implode( "\n", $lines );
-		$parts[] = 'このサイトの商品レビュー記事に役立つ「カテゴリー」と「板」を、上の一覧から JSON で選んでください。';
+		$parts[] = 'このサイトの商品レビュー記事に役立つ「カテゴリー」と「板」を、上の一覧から JSON で選んでください。'
+			. '「categories」にはカテゴリー名（各行の「:」より前）、「boards」には**板名**（「:」より後ろに並んでいる語）を入れてください。';
 		return implode( "\n\n", $parts );
 	}
 	private static function reddit_system_prompt(): string {

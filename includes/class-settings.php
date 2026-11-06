@@ -10,6 +10,21 @@ class Settings {
 	public const TOP_HERO_IMAGE_ONLY = 'image_only';
 	public const TOP_HERO_HIDDEN     = 'hidden';
 	public const DEFAULT_DISCLOSURE_TEXT = 'この画像は記事を元にAIで生成したものであり、紹介する商品とは無関係です。';
+	public const DISCLOSURE_KEYS = array( 'affiliate', 'image', 'review', 'article' );
+	public const DISCLOSURE_POSITION_TOP = 'top';
+	public const DISCLOSURE_POSITION_BOTTOM = 'bottom';
+	public const DISCLOSURE_DEFAULT_ENABLED = array(
+		'affiliate' => '1',
+		'image'     => '1',
+		'review'    => '1',
+		'article'   => '0',
+	);
+	public const DISCLOSURE_DEFAULT_TEXTS = array(
+		'affiliate' => '当サイトはアフィリエイト広告（楽天市場・Yahoo!ショッピング・Amazon 等）を利用しています。',
+		'image'     => self::DEFAULT_DISCLOSURE_TEXT,
+		'review'    => '一部の記事には、販売ページや口コミサイト等に投稿されたレビューや商品情報を元に、AIが生成、リライト、要約したものが含まれることがあります。',
+		'article'   => '当サイトの記事は、収集した販売ページや口コミサイト等に投稿された情報を元に、AIがリライト、要約、集約したものです。',
+	);
 	protected array $data;
 	protected bool $common_fallback = true;
 	private ?array $common_overrides_cache = null;
@@ -169,8 +184,8 @@ class Settings {
 				}
 				$normalized[ (string) $id ] = array(
 					'provider' => $provider,
-					'api_key'  => (string) ( $entry['api_key'] ?? '' ),
-					'model'    => (string) ( $entry['model'] ?? '' ),
+					'api_key'  => self::trim_secret( (string) ( $entry['api_key'] ?? '' ) ),
+					'model'    => self::trim_secret( (string) ( $entry['model'] ?? '' ) ),
 				);
 			}
 			if ( array() !== $normalized ) {
@@ -178,8 +193,8 @@ class Settings {
 			}
 		}
 		$provider = (string) ( $llm['provider'] ?? '' );
-		$api_key  = (string) ( $llm['api_key'] ?? '' );
-		$model    = (string) ( $llm['model'] ?? '' );
+		$api_key  = self::trim_secret( (string) ( $llm['api_key'] ?? '' ) );
+		$model    = self::trim_secret( (string) ( $llm['model'] ?? '' ) );
 		if ( '' === $provider && '' === $api_key && '' === $model ) {
 			return array();
 		}
@@ -265,13 +280,35 @@ class Settings {
 			'eyecatch_mode'  => self::normalize_eyecatch_mode( $value( $image, 'eyecatch_mode', 'generate' ) ),
 			'eyecatch_image' => $value( $image, 'eyecatch_image', '' ),
 			'show_eyecatch' => $value( $image, 'show_eyecatch', '1' ),
-			'disclosure'   => $value( $image, 'disclosure', '1' ),
-			'disclosure_text' => $value( $image, 'disclosure_text', self::DEFAULT_DISCLOSURE_TEXT ),
 			'top_hero'     => self::normalize_top_hero( $value( $image, 'top_hero', self::TOP_HERO_IMAGE_ONLY ) ),
 			'ogp'          => $value( $image, 'ogp', '0' ),
 			'font'         => $value( $image, 'font', Font_Catalog::DEFAULT_FONT ),
 			'font_weight'  => $value( $image, 'font_weight', Font_Catalog::DEFAULT_WEIGHT ),
 		);
+	}
+	public function disclosure(): array {
+		$saved = $this->get( 'disclosure', array() );
+		$saved = is_array( $saved ) ? $saved : array();
+		$result = array();
+		foreach ( self::DISCLOSURE_KEYS as $key ) {
+			$enabled = array_key_exists( $key . '_enabled', $saved )
+				? ( '1' === (string) $saved[ $key . '_enabled' ] ? '1' : '0' )
+				: self::DISCLOSURE_DEFAULT_ENABLED[ $key ];
+			$position = (string) ( $saved[ $key . '_position' ] ?? '' );
+			$position = in_array( $position, array( self::DISCLOSURE_POSITION_TOP, self::DISCLOSURE_POSITION_BOTTOM ), true )
+				? $position
+				: self::DISCLOSURE_POSITION_TOP;
+			$text = trim( (string) ( $saved[ $key . '_text' ] ?? '' ) );
+			if ( '' === $text ) {
+				$text = self::DISCLOSURE_DEFAULT_TEXTS[ $key ];
+			}
+			$result[ $key ] = array(
+				'enabled'  => $enabled,
+				'position' => $position,
+				'text'     => $text,
+			);
+		}
+		return $result;
 	}
 	private static function normalize_top_hero( string $mode ): string {
 		return in_array(
@@ -306,5 +343,13 @@ class Settings {
 			}
 		}
 		return '';
+	}
+	public static function trim_secret( string $value ): string {
+		$trimmed = preg_replace(
+			'/^[\p{Z}\s\x{FEFF}\x{200B}\x{2060}]+|[\p{Z}\s\x{FEFF}\x{200B}\x{2060}]+$/u',
+			'',
+			$value
+		);
+		return null === $trimmed ? trim( $value ) : $trimmed;
 	}
 }

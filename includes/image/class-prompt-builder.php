@@ -45,6 +45,7 @@ final class Prompt_Builder {
 			. "Requirements:\n"
 			. "- Describe the BENEFIT / after-state the reader wants, not the product itself.\n"
 			. "- Do not depict the product precisely. No packaging, no brand logos, no packshots.\n"
+			. "- NEVER include brand names, product names, model numbers, or trademarks in the prompt (they can trigger the image AI's safety filter and force a generic fallback).\n"
 			. "- If a person appears, show only hands, a back view, or a silhouette of a grown-up person. No identifiable face.\n"
 			. "- {$copy}\n"
 			. "- Natural, candid, editorial lifestyle mood (Instagram / Pinterest / magazine), not a sales banner.\n"
@@ -65,7 +66,7 @@ final class Prompt_Builder {
 		$image = $this->settings->image();
 		$side  = 'right' === $image['text_side'] ? 'right' : 'left';
 		return $this->finish(
-			'A calm, bright, tidy modern home interior with natural window light, soft neutral tones, a cup and a plant on a wooden table, clean copy space on the ' . $side . ', minimal editorial lifestyle photography, no text, no letters, no logos, no watermark.'
+			self::safe_scene( (string) $image['style'] ) . ', clean copy space on the ' . $side . '.'
 		);
 	}
 	public function safe_favicon_prompt(): string {
@@ -84,6 +85,7 @@ final class Prompt_Builder {
 			. "Requirements:\n"
 			. "- A hero image that represents the WHOLE website (a lifestyle scene, not a product).\n"
 			. "- Do not depict products precisely. No packaging, no brand logos, no packshots, no price tags, no banners.\n"
+			. "- NEVER include brand names, product names, model numbers, or trademarks in the prompt (they can trigger the image AI's safety filter and force a generic fallback).\n"
 			. "- If a person appears, show only hands, a back view, or a silhouette of a grown-up person. No identifiable face.\n"
 			. "- Natural, candid, editorial lifestyle mood (Instagram / Pinterest / magazine), not a sales banner.\n"
 			. "- Leave generous clean space so the image works as a wide hero image.\n"
@@ -102,7 +104,7 @@ final class Prompt_Builder {
 	}
 	public function safe_top_eyecatch_prompt(): string {
 		return $this->finish(
-			'A calm, bright, tidy modern home interior with natural window light, soft neutral tones, a cup and a plant on a wooden table, generous negative space, minimal editorial lifestyle photography, no text, no letters, no logos, no watermark.'
+			self::safe_scene( (string) $this->settings->image()['style'] ) . ', generous negative space for a wide hero image.'
 		);
 	}
 	public function profile_prompt(): string {
@@ -125,6 +127,7 @@ final class Prompt_Builder {
 			. "- A fictional person; do not resemble a real person or celebrity.\n"
 			. "- Head-and-shoulders portrait, friendly and trustworthy, natural light, neutral background.\n"
 			. "- No text, letters, numbers, logos, watermarks, or product packshots.\n"
+			. "- NEVER include brand names, product names, or trademarks in the prompt.\n"
 			. "- Apply this art style: {$style_en}\n"
 			. '- Output one English prompt only, max 60 words.';
 		$prompt = '1' === $image['prompt_llm']
@@ -159,6 +162,7 @@ final class Prompt_Builder {
 			. "- A fictional person; do not resemble a real person or celebrity.\n"
 			. "- Head-and-shoulders portrait, friendly and trustworthy, natural light, neutral background.\n"
 			. "- No text, letters, numbers, logos, watermarks, or product packshots.\n"
+			. "- NEVER include brand names, product names, or trademarks in the prompt.\n"
 			. "- Apply this art style: {$style_en}\n"
 			. '- Output one English prompt only, max 60 words.';
 		$prompt = '1' === $image['prompt_llm']
@@ -176,6 +180,19 @@ final class Prompt_Builder {
 		return $this->finish_portrait(
 			'A friendly head-and-shoulders portrait of a fictional Japanese person, natural window light, soft neutral background, warm and trustworthy expression, looking at the camera, no text, no logos, no watermark.'
 		);
+	}
+	private static function safe_scene( string $style ): string {
+		switch ( Image_Catalog::normalize_style( $style ) ) {
+			case Image_Catalog::STYLE_3D:
+				return 'A minimal 3D rendered lifestyle scene of a calm, tidy modern room with soft clay textures, pastel colors, gentle shadows, and a sense of everyday comfort';
+			case Image_Catalog::STYLE_FLAT:
+				return 'A flat vector illustration of a calm, tidy modern lifestyle scene with simple bold shapes, a limited palette, and a friendly, clear mood';
+			case Image_Catalog::STYLE_EDITORIAL:
+				return 'A minimal editorial lifestyle scene with soft neutral tones, clean composition, and a calm, sophisticated sense of everyday comfort';
+			case Image_Catalog::STYLE_CINEMATIC:
+			default:
+				return 'A cinematic lifestyle scene of a calm, tidy modern room with natural window light, warm tones, and a sense of everyday comfort';
+		}
 	}
 	private static function gender_key( string $gender ): string {
 		$gender = mb_strtolower( trim( $gender ) );

@@ -16,7 +16,7 @@ final class Keyword_Proposer {
 		return '' !== (string) ( $this->llm['api_key'] ?? '' );
 	}
 	public static function unavailable_message(): string {
-		return __( 'API キーが未設定のためキーワードの提案は使えません。「LLM設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
+		return __( 'API キーが未設定のためキーワードの提案は使えません。「AI設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
 	}
 	public function propose( array $scope, array $existing, int $want ): array {
 		if ( ! $this->is_available() ) {

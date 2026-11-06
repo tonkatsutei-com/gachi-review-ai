@@ -6,7 +6,7 @@ use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 final class Font_Preview {
 	private const WIDTH  = 1200;
 	private const HEIGHT = 630;
-	public static function render( string $font, string $weight, int $top_eyecatch_id = 0 ): array {
+	public static function render( string $font, string $weight, int $top_eyecatch_id = 0, ?string $site_name = null, ?string $description = null ): array {
 		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagettftext' ) ) {
 			throw new \RuntimeException( __( 'プレビューを生成できません（GD の FreeType が無効です）。', GACHIREAI_TEXT_DOMAIN ) );
 		}
@@ -16,7 +16,8 @@ final class Font_Preview {
 		}
 		$profile   = new Site_Profile();
 		$elements  = $profile->get_site_elements();
-		$site_name = (string) ( $elements['site_name'] ?? '' );
+		$site_name   = null !== $site_name ? $site_name : (string) ( $elements['site_name'] ?? '' );
+		$description = null !== $description ? $description : (string) ( $elements['description'] ?? '' );
 		$settings  = new Settings();
 		$image     = $settings->image();
 		$binary    = self::base_image( $profile, $top_eyecatch_id );
@@ -27,8 +28,8 @@ final class Font_Preview {
 			$binary,
 			array(
 				'site_name'    => '',
-				'title'        => '' !== trim( $site_name ) ? $site_name : __( 'サイト名', GACHIREAI_TEXT_DOMAIN ),
-				'product_name' => self::subtitle( (string) ( $elements['description'] ?? '' ) ),
+				'title'        => '' !== trim( $site_name ) ? $site_name : (string) get_bloginfo( 'name' ),
+				'product_name' => self::subtitle( $description ),
 			),
 			(string) ( $image['text_side'] ?? 'left' ),
 			$font_path

@@ -1,4 +1,0 @@
-
-?$notice_text
-<p class="gachireai-eyecatch-notice">{$notice_text}</p>
-$notice_text?

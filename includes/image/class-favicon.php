@@ -19,7 +19,7 @@ final class Favicon {
 		$image   = $this->settings->image();
 		$api_key = $this->settings->image_api_key( $image );
 		if ( '' === $api_key ) {
-			throw new \RuntimeException( __( '画像生成AIの API キーが未設定です。「画像設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ) );
+			throw new \RuntimeException( __( '画像生成AIの API キーが未設定です。「AI設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		$provider = Manager::provider_for( $image, $api_key );
 		$builder  = new Prompt_Builder( $this->settings, $this->profile );

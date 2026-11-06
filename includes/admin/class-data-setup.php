@@ -154,10 +154,12 @@ final class Data_Setup extends Screen {
 	private function propose( string $section ): array {
 		$scope = ( new Site_Profile() )->get_scope();
 		if ( self::FIVECH_GROUP === $section ) {
-			$result = ( new Source_Selector() )->select_fivech( ( new Fivech_Client() )->categories(), $scope );
+			$client = new Fivech_Client();
+			$result = ( new Source_Selector() )->select_fivech( $client->categories(), $scope );
+			$boards = $client->resolvable_boards( $result['boards'] );
 			return array(
 				'categories' => implode( ', ', $result['categories'] ),
-				'boards'     => implode( ', ', $result['boards'] ),
+				'boards'     => implode( ', ', $boards ),
 			);
 		}
 		$result = ( new Source_Selector() )->select_reddit( Source_Selector::subreddit_catalog(), $scope );
@@ -171,6 +173,9 @@ final class Data_Setup extends Screen {
 			$posted  = $this->posted( $group );
 			$current = (array) $settings->get( $group, array() );
 			$clean   = $this->sanitize( $posted, $current, $group );
+			if ( self::AI_REVIEW_GROUP === $group && Status::capabilities()->is_free() ) {
+				unset( $clean[ Ai_Review::KEY_MODE ] );
+			}
 			$settings->set( $group, array_merge( $current, $clean ) );
 			if ( '' === $section || $section === $group ) {
 				$this->record_connection( $group, $settings );
@@ -676,7 +681,13 @@ final class Data_Setup extends Screen {
 				'label'       => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
 				'type'        => 'select',
 				'options'     => Ai_Review::mode_options(),
-				'default'     => Ai_Review::DEFAULT_MODE,
+				'default'     => Ai_Review::default_mode(),
+				'disabled'    => Status::capabilities()->is_free()
+					? array( Ai_Review::MODE_OFF, Ai_Review::MODE_FILL )
+					: array(),
+				'warning'     => Status::capabilities()->is_free()
+					? __( 'FREEライセンスでは「AI生成のみ」のみ選択できます。', GACHIREAI_TEXT_DOMAIN )
+					: '',
 				'driver'      => self::AI_REVIEW_DRIVER,
 				'description' => __( 'AIによるレビュー生成の条件を選びます。', GACHIREAI_TEXT_DOMAIN ),
 			),
@@ -696,7 +707,7 @@ final class Data_Setup extends Screen {
 				'label'       => __( '必要数', GACHIREAI_TEXT_DOMAIN ),
 				'type'        => 'number',
 				'min'         => Ai_Review::MIN_COUNT,
-				'max'         => Ai_Review::MAX_COUNT,
+				'max'         => Ai_Review::max_required_count(),
 				'default'     => (string) Ai_Review::DEFAULT_COUNT,
 				'row_depends' => array(
 					'on'     => self::AI_REVIEW_DRIVER,

@@ -139,7 +139,7 @@ final class Common_Settings extends Screen {
 			$this->section_model(
 				'jev',
 				__( '判定AI', GACHIREAI_TEXT_DOMAIN ),
-				__( 'レビューを判定する判定AI（Jev）の API キーを設定します。', GACHIREAI_TEXT_DOMAIN ),
+				__( 'レビューを判定する判定AI（Jev）の API キーを設定します。判定AI（Jev）を使うと、収集したレビューを「採用・保留・除外」に自動判定でき、記事に使う素材の品質を保てます。判定AI（Jev）は安価な有料サービスです（Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。', GACHIREAI_TEXT_DOMAIN ),
 				$this->definitions_jev(),
 				'jev',
 				$jev,
@@ -457,8 +457,8 @@ final class Common_Settings extends Screen {
 		}
 		$entries[ $provider ] = array(
 			'provider' => $provider,
-			'api_key'  => (string) ( $clean['api_key'] ?? '' ),
-			'model'    => (string) ( $clean['model'] ?? '' ),
+			'api_key'  => Settings::trim_secret( (string) ( $clean['api_key'] ?? '' ) ),
+			'model'    => Settings::trim_secret( (string) ( $clean['model'] ?? '' ) ),
 		);
 		$store->set(
 			'llm',
@@ -660,7 +660,7 @@ final class Common_Settings extends Screen {
 				'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
 				'type'        => 'password',
 				'max'         => 500,
-				'description' => __( '保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( '判定AI（Jev）は安価な有料サービスです（任意設定。Jev（typesafe.ai）で API キーを取得）。保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'model'   => array(
 				'label'       => __( 'モデル', GACHIREAI_TEXT_DOMAIN ),

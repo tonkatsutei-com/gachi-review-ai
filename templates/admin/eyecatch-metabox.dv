@@ -14,7 +14,7 @@ $eyecatch_has_image!
 </form>
 <p class="description">{$eyecatch_note}</p>
 ?$eyecatch_disabled
-<p class="description"><a href="{$eyecatch_settings_url}">画像設定を開く</a></p>
+<p class="description"><a href="{$eyecatch_settings_url}">AI設定を開く</a></p>
 $eyecatch_disabled?
 ?$eyecatch_messages
 [$eyecatch_messages]

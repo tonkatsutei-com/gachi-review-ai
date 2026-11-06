@@ -1,0 +1,45 @@
+<form method="post" action="{$disclosure_form_action}">
+	?$disclosure_hidden_fields
+	[$disclosure_hidden_fields]
+	<input type="hidden" name="{$name}" value="{$value}">
+	[/$disclosure_hidden_fields]
+	$disclosure_hidden_fields?
+	<section class="gachireai-section" ?$disclosure_anchor id="gachireai-section-{$disclosure_anchor}"$disclosure_anchor?>
+		<header class="gachireai-section__header">
+			<h2 class="gachireai-section__title">{$disclosure_title}</h2>
+			?$disclosure_intro
+			<p class="gachireai-section__desc gachireai-section__desc--preline">{$disclosure_intro}</p>
+			$disclosure_intro?
+		</header>
+		<div class="gachireai-section__main">
+			?$disclosure_blocks
+			[$disclosure_blocks]
+			<div class="gachireai-block">
+				?$block_title
+				<h3 class="gachireai-block__title">{$block_title}</h3>
+				$block_title?
+				<div class="gachireai-block__main">
+					<table class="form-table" role="presentation">
+						?$fields
+						[$fields]{% partials/field.dv %}[/$fields]
+						$fields?
+					</table>
+				</div>
+			</div>
+			[/$disclosure_blocks]
+			$disclosure_blocks?
+		</div>
+		<footer class="gachireai-section__footer">
+			<div class="gachireai-section__actions">
+				<button type="submit" class="button button-primary">{$disclosure_submit_label}</button>
+			</div>
+			<div class="gachireai-section__messages">
+				?$disclosure_messages
+				[$disclosure_messages]
+				<div class="notice notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$disclosure_messages]
+				$disclosure_messages?
+			</div>
+		</footer>
+	</section>
+</form>

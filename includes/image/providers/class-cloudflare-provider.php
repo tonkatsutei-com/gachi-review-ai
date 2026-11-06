@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Image\Providers;
+use Tonkatsutei\Gachi_Review_AI\Event_Logger;
 use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Image\Provider;
 use Tonkatsutei\Gachi_Review_AI\Image\Provider_Exception;
@@ -10,7 +11,7 @@ final class Cloudflare_Provider implements Provider {
 	private const MAX_PROMPT = 2048;
 	private const MAX_SAFETY_RETRIES = 2;
 	private static array $safety_retry_delays = array( 2, 4 );
-	private const SAFE_FALLBACK = 'A calm, bright, tidy modern home interior with natural window light, soft neutral tones, a cup and a plant on a wooden table, minimal editorial lifestyle photography, no text, no letters, no logos, no watermark.';
+	private const SAFE_FALLBACK = 'A calm, bright, tidy modern lifestyle scene with natural window light, soft neutral tones, and a sense of everyday comfort, minimal editorial photography.';
 	private string $account_id;
 	private string $api_key;
 	private string $model;
@@ -43,6 +44,15 @@ final class Cloudflare_Provider implements Provider {
 		}
 		list( $response, $code, $raw, $body ) = $this->request( $prompt, $steps );
 		if ( self::is_nsfw_error( $raw ) ) {
+			Event_Logger::record(
+				Event_Logger::TYPE_SYSTEM,
+				Event_Logger::LEVEL_WARN,
+				__( '画像生成AI（Cloudflare）の安全フィルターでプロンプトが拒否されたため、安全な汎用シーンで再試行しました。テーマに沿わない画像になる場合があります。', GACHIREAI_TEXT_DOMAIN ),
+				array(
+					'model'  => $this->model,
+					'prompt' => mb_substr( $prompt, 0, 120 ),
+				)
+			);
 			$safe = '' !== $fallback ? $fallback : self::SAFE_FALLBACK;
 			if ( $safe !== $prompt ) {
 				$prompt = $safe;

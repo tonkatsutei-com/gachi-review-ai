@@ -55,10 +55,8 @@ final class Manager {
 		return Status::capabilities()->can_fetch_prompts();
 	}
 	private const SERVER_ONLY_PROMPTS = array(
-		'article.system.quote',
 		'article.system.experience',
 		'article.system.dialogue',
-		'ai_review.system',
 		'source_proposer.system',
 		'source_select.fivech',
 		'source_select.reddit',

@@ -298,7 +298,7 @@ final class Auto_Post_Pipeline {
 				(int) $state['author_id'],
 				(string) $state['genre_id']
 			);
-		} catch ( Reuse_Interval_Exception $e ) {
+		} catch ( Skippable_Exception $e ) {
 			$this->fail_step( $state, $e->getMessage(), false, Event_Logger::TYPE_GENERATE );
 			return;
 		} catch ( \Throwable $e ) {

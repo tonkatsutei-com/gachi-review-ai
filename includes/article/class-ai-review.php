@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Article;
+use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Ai_Review {
 	public const GROUP = 'ai_review';
@@ -15,6 +16,7 @@ final class Ai_Review {
 	public const DEFAULT_COUNT = 5;
 	public const MIN_COUNT = 1;
 	public const MAX_COUNT = 10;
+	public const FREE_MAX_COUNT = 5;
 	public const MODE_VALUES = array( self::MODE_OFF, self::MODE_FILL, self::MODE_ONLY );
 	public static function mode_options(): array {
 		return array(
@@ -28,8 +30,35 @@ final class Ai_Review {
 		return is_array( $values ) ? $values : array();
 	}
 	public static function mode(): string {
+		if ( Status::capabilities()->is_free() ) {
+			return self::MODE_ONLY;
+		}
 		$value = (string) ( self::values()[ self::KEY_MODE ] ?? '' );
-		return in_array( $value, self::MODE_VALUES, true ) ? $value : self::DEFAULT_MODE;
+		return in_array( $value, self::MODE_VALUES, true ) ? $value : self::default_mode();
+	}
+	public static function default_mode(): string {
+		if ( Status::capabilities()->is_free() ) {
+			return self::MODE_ONLY;
+		}
+		return self::has_generated_article() ? self::MODE_ONLY : self::MODE_FILL;
+	}
+	private static function has_generated_article(): bool {
+		static $cache = null;
+		if ( null !== $cache ) {
+			return $cache;
+		}
+		global $wpdb;
+		if ( ! is_object( $wpdb ) || ! isset( $wpdb->postmeta ) ) {
+			$cache = false;
+			return $cache;
+		}
+		$cache = (bool) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM {$wpdb->postmeta} WHERE meta_key = %s LIMIT 1",
+				'gachireai_product_name'
+			)
+		);
+		return $cache;
 	}
 	public static function is_off(): bool {
 		return self::MODE_OFF === self::mode();
@@ -44,7 +73,14 @@ final class Ai_Review {
 		return self::read_count( self::KEY_MIN_COUNT );
 	}
 	public static function required_count(): int {
-		return self::read_count( self::KEY_REQUIRED_COUNT );
+		$count = self::read_count( self::KEY_REQUIRED_COUNT );
+		if ( Status::capabilities()->is_free() ) {
+			return min( self::FREE_MAX_COUNT, $count );
+		}
+		return $count;
+	}
+	public static function max_required_count(): int {
+		return Status::capabilities()->is_free() ? self::FREE_MAX_COUNT : self::MAX_COUNT;
 	}
 	public static function count(): int {
 		return self::is_off() ? self::min_count() : self::required_count();

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ガチレビュー.AI
  * Description:       商品リサーチから口コミ収集、レビュー記事の生成を、AIを使って自動化します。
- * Version:           0.222.0
+ * Version:           0.224.8
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Tonkatsutei
@@ -26,6 +26,9 @@ if (! defined('GACHIREAI_LLM_GATEWAY')) {
 }
 if (! defined('GACHIREAI_IMAGE_GATEWAY')) {
 	define('GACHIREAI_IMAGE_GATEWAY', 'https://tonkatsutei.com/tools_api/gachi-review-ai/');
+}
+if (! defined('GACHIREAI_AMAZON_CATEGORY_GATEWAY')) {
+	define('GACHIREAI_AMAZON_CATEGORY_GATEWAY', 'https://tonkatsutei.com/tools_api/gachi-review-ai/');
 }
 require_once GACHIREAI_PLUGIN_DIR . 'includes/bootstrap.php';
 add_action(

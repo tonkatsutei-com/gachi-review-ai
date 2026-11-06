@@ -5,6 +5,7 @@ use Tonkatsutei\Gachi_Review_AI\Affiliate\Box_Positioner;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Box_Renderer;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Box_Sample;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Card_Settings;
+use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Providers;
 use Tonkatsutei\Gachi_Review_AI\Article\Auto_Post_Scheduler;
 use Tonkatsutei\Gachi_Review_AI\Article\Cron_Schedule;
@@ -245,6 +246,7 @@ final class Article_Settings extends Screen {
 			$clean = array_intersect_key( $clean, array( 'eyecatch' => true ) );
 		}
 		$candidate = array_merge( $current, $clean );
+		$candidate = Connection_Status::preserve_record_keys( self::EYECATCH_GROUP, $candidate, $settings );
 		$settings->set( self::EYECATCH_GROUP, $candidate );
 		$this->record_setting_save( __( 'アイキャッチ設定', GACHIREAI_TEXT_DOMAIN ) );
 	}
@@ -408,25 +410,6 @@ final class Article_Settings extends Screen {
 				'disabled_by' => 'eyecatch',
 				'field_locked' => $section_disabled,
 				'description' => __( "記事本文の先頭にアイキャッチ画像を表示します。\nテーマによってはアイキャッチ画像を表示する機能がある場合があります。\nその場合は、重複しないようどちらか一方だけをONにしてください。\n例: Cocoon", GACHIREAI_TEXT_DOMAIN ),
-			),
-			'disclosure'    => array(
-				'label'       => __( 'AI生成画像の公示', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'checkbox',
-				'options'     => array( '1' => __( '表示する', GACHIREAI_TEXT_DOMAIN ) ),
-				'field_disabled' => $base_disabled,
-				'disabled_by' => 'eyecatch',
-				'field_locked' => $section_disabled,
-				'description' => __( "記事本文のアイキャッチ直下に公示を表示します。\n文面は次の「公示の文面」で変更できます。", GACHIREAI_TEXT_DOMAIN ),
-			),
-			'disclosure_text' => array(
-				'label'       => __( '公示の文面', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'text',
-				'placeholder' => __( 'この画像は記事を元にAIで生成したものであり、紹介する商品とは無関係です。', GACHIREAI_TEXT_DOMAIN ),
-				'max'         => 300,
-				'field_disabled' => $base_disabled,
-				'disabled_by' => 'eyecatch',
-				'field_locked' => $section_disabled,
-				'description' => __( "記事のアイキャッチ直下に表示する文面です。\n空にすると既定の文面を使います。", GACHIREAI_TEXT_DOMAIN ),
 			),
 		);
 	}
@@ -607,7 +590,7 @@ final class Article_Settings extends Screen {
 						Status::capabilities()->allowed_article_types()
 					)
 				),
-				'default'     => 'summary',
+				'default'     => (string) ( Status::capabilities()->allowed_article_types()[0] ?? 'summary' ),
 				'driver'      => 'article_type',
 				'description' => __( "生成する記事のタイプです。\n総評型＝複数のレビューを分析し、投稿者の言葉で要約します。\n引用型＝良い評価と悪い評価のレビューを数件引用で列挙し、文末に総評を付けます。\n体験談型＝取得したデータであることを書かず、投稿者のレビューとして文章を書きます。\n対話型＝質問者と回答者の会話でレビューを伝えます（PRO ライセンスのみ）。", GACHIREAI_TEXT_DOMAIN ),
 			),

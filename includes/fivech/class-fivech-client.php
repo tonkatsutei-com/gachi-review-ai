@@ -136,6 +136,19 @@ final class Fivech_Client {
 		}
 		return null !== $partial ? $partial['directory_name'] : null;
 	}
+	public function resolvable_boards( array $names ): array {
+		$result = array();
+		foreach ( $names as $name ) {
+			$name = trim( (string) $name );
+			if ( '' === $name ) {
+				continue;
+			}
+			if ( null !== $this->resolve_board( $name ) ) {
+				$result[] = $name;
+			}
+		}
+		return $result;
+	}
 	private static function normalize_name( string $name ): string {
 		$name = (string) preg_replace( '/[\s\x{3000}]+/u', '', trim( $name ) );
 		return mb_strtolower( $name );

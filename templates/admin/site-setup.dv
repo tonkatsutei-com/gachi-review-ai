@@ -5,6 +5,7 @@
 	{% partials/site-elements.dv %}
 	{% partials/site-images.dv %}
 	{% partials/static-pages.dv %}
+	{% partials/disclosure.dv %}
 	?$modal
 	<div class="gachireai-modal" id="{$picker_id}" hidden>
 		<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-category-picker-title">

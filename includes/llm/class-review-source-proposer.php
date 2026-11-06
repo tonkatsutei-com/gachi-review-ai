@@ -16,7 +16,7 @@ final class Review_Source_Proposer {
 		return '' !== (string) ( $this->llm['api_key'] ?? '' );
 	}
 	public static function unavailable_message(): string {
-		return __( 'API キーが未設定のためレビューの取得元を特定できません。「LLM設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
+		return __( 'API キーが未設定のためレビューの取得元を特定できません。「AI設定」タブで LLM の API キーを保存すると有効になります。', GACHIREAI_TEXT_DOMAIN );
 	}
 	public function propose( string $product_name, array $scope = array() ): array {
 		if ( ! $this->is_available() ) {

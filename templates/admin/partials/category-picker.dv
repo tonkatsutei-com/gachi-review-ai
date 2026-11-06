@@ -34,7 +34,7 @@
 	</div>
 	$children?
 	!$children
-	<p class="description">{$empty_message}</p>
+	<p class="{$empty_class}">{$empty_message}</p>
 	$children!
 	<div class="gachireai-modal__actions">
 		?$children

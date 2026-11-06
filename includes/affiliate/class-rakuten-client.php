@@ -33,13 +33,13 @@ final class Rakuten_Client {
 		if ( '' === $app_id || '' === $access_key ) {
 			return $this->result(
 				self::STATUS_MISSING_CONFIG,
-				__( '楽天のアプリケーションID または アクセスキーが未設定です。「LLM設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
+				__( '楽天のアプリケーションID または アクセスキーが未設定です。「ASP設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
 		if ( '' === $affiliate ) {
 			return $this->result(
 				self::STATUS_MISSING_AFFILIATE,
-				__( '楽天のアフィリエイトIDが未設定です。「LLM設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
+				__( '楽天のアフィリエイトIDが未設定です。「ASP設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
 		$keyword = trim( $keyword );
@@ -275,7 +275,7 @@ final class Rakuten_Client {
 		if ( '' === $app_id || '' === $access_key ) {
 			return $this->search_result(
 				self::STATUS_MISSING_CONFIG,
-				__( '楽天のアプリケーションID または アクセスキーが未設定です。「LLM設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
+				__( '楽天のアプリケーションID または アクセスキーが未設定です。「ASP設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
 		$keyword  = trim( $keyword );
@@ -371,7 +371,7 @@ final class Rakuten_Client {
 		if ( '' === $app_id || '' === $access_key ) {
 			return $this->genre_result(
 				self::STATUS_MISSING_CONFIG,
-				__( '楽天のアプリケーションID または アクセスキーが未設定です。「LLM設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
+				__( '楽天のアプリケーションID または アクセスキーが未設定です。「ASP設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
 		$genre_id = trim( $genre_id );

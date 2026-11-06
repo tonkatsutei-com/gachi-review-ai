@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Affiliate;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
+use Tonkatsutei\Gachi_Review_AI\Event_Logger;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Amazon_Client {
 	public const BACKEND_FREE_AMZN = 'free_amzn_creators';
@@ -45,6 +46,7 @@ final class Amazon_Client {
 	private const MESSAGE_MAX = 300;
 	private const TOKEN_TRANSIENT_PREFIX = 'gachireai_amazon_token_';
 	private const TOKEN_TTL = 3000;
+	private static float $last_request_at = 0.0;
 	public static function free_amzn_available(): bool {
 		return class_exists( self::FREE_AMZN_CLASS ) && method_exists( self::FREE_AMZN_CLASS, 'search' );
 	}
@@ -595,6 +597,103 @@ final class Amazon_Client {
 			'item'    => array(),
 			'message' => trim( $message ),
 		);
+	}
+	public function browse_nodes( array $settings, array $browse_node_ids, string $resource = 'children' ): array {
+		$client_id     = trim( (string) ( $settings[ self::CLIENT_ID ] ?? '' ) );
+		$client_secret = trim( (string) ( $settings[ self::CLIENT_SECRET ] ?? '' ) );
+		$partner_tag   = trim( (string) ( $settings['partner_tag'] ?? '' ) );
+		if ( '' === $client_id || '' === $client_secret || '' === $partner_tag ) {
+			self::log_warning( __( 'Amazon GetBrowseNodes: 資格情報またはパートナータグが未設定です。', GACHIREAI_TEXT_DOMAIN ) );
+			return array();
+		}
+		$ids = array();
+		foreach ( $browse_node_ids as $id ) {
+			$id = trim( (string) $id );
+			if ( '' !== $id ) {
+				$ids[] = $id;
+			}
+		}
+		if ( array() === $ids ) {
+			return array();
+		}
+		$secrets = array( $client_id, $client_secret );
+		$token   = $this->access_token( $settings, $secrets );
+		if ( '' === $token['value'] ) {
+			self::log_warning( __( 'Amazon GetBrowseNodes: アクセストークンを取得できませんでした。', GACHIREAI_TEXT_DOMAIN ) . ' ' . $token['message'] );
+			return array();
+		}
+		$data = $this->creators_post(
+			'https://creatorsapi.amazon/catalog/v1/getBrowseNodes',
+			$token['value'],
+			array(
+				'partnerTag'    => $partner_tag,
+				'browseNodeIds' => $ids,
+				'marketplace'   => self::domain(),
+				'resources'     => array( 'ancestor' === $resource ? 'browseNodes.ancestor' : 'browseNodes.children' ),
+			)
+		);
+		if ( ! is_array( $data ) || ! is_array( $data['browseNodesResult']['browseNodes'] ?? null ) ) {
+			return array();
+		}
+		return $data['browseNodesResult']['browseNodes'];
+	}
+	private function creators_post( string $url, string $token, array $payload ): ?array {
+		$now  = microtime( true );
+		$wait = 1.05 - ( $now - self::$last_request_at );
+		if ( self::$last_request_at > 0.0 && $wait > 0.0 ) {
+			usleep( (int) min( 999999, $wait * 1000000 ) );
+		}
+		self::$last_request_at = microtime( true );
+		$retryable = array( 429, 500, 502, 503, 504 );
+		$max       = 4;
+		for ( $attempt = 1; $attempt <= $max; $attempt++ ) {
+			$response = wp_remote_post(
+				$url,
+				array(
+					'timeout' => self::TIMEOUT,
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $token,
+						'Content-Type'  => 'application/json',
+						'x-marketplace' => self::domain(),
+					),
+					'body'    => (string) wp_json_encode( $payload ),
+				)
+			);
+			if ( is_wp_error( $response ) ) {
+				self::log_warning( __( 'Amazon Creators API: 通信に失敗しました。', GACHIREAI_TEXT_DOMAIN ) . ' ' . $response->get_error_message() );
+				if ( $attempt < $max ) {
+					sleep( $attempt );
+					self::$last_request_at = microtime( true );
+					continue;
+				}
+				return null;
+			}
+			$code = (int) wp_remote_retrieve_response_code( $response );
+			if ( in_array( $code, $retryable, true ) ) {
+				if ( $attempt < $max ) {
+					$retry_after = (string) wp_remote_retrieve_header( $response, 'retry-after' );
+					$delay       = is_numeric( $retry_after ) ? max( 1, (int) $retry_after ) : $attempt;
+					self::log_warning( sprintf( __( 'Amazon Creators API: 一時的な失敗（HTTP %d）。再試行します。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+					sleep( $delay );
+					self::$last_request_at = microtime( true );
+					continue;
+				}
+				self::log_warning( sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+				return null;
+			}
+			$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+			if ( 200 !== $code || ! is_array( $decoded ) ) {
+				self::log_warning( sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+				return null;
+			}
+			return $decoded;
+		}
+		return null;
+	}
+	private static function log_warning( string $message ): void {
+		if ( class_exists( Event_Logger::class ) ) {
+			Event_Logger::record( Event_Logger::TYPE_SYSTEM, Event_Logger::LEVEL_WARN, $message );
+		}
 	}
 	private function search_result( string $status, string $message ): array {
 		return array(

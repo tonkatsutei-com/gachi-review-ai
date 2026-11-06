@@ -40,6 +40,7 @@ final class Admin {
 		add_action( 'admin_init', array( $this->site_setup(), 'maybe_save' ) );
 		add_action( 'admin_init', array( $this->site_setup(), 'maybe_save_elements' ) );
 		add_action( 'admin_init', array( $this->site_setup(), 'maybe_save_site_images' ) );
+		add_action( 'admin_init', array( $this->site_setup(), 'maybe_save_disclosure' ) );
 		add_action( 'admin_init', array( $this->article_settings(), 'maybe_save_article' ) );
 		add_action( 'admin_init', array( $this->article_settings(), 'maybe_save_auto_post' ) );
 		add_action( 'admin_init', array( $this->article_settings(), 'maybe_save_card' ) );

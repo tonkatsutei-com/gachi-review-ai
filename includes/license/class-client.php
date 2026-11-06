@@ -35,14 +35,17 @@ final class Client {
 		} elseif ( isset( $data['status'] ) && is_scalar( $data['status'] ) ) {
 			$tier = self::tier_from_status( (string) $data['status'] );
 		}
-		$expires_at = '';
-		if ( isset( $data['expires_at'] ) && is_scalar( $data['expires_at'] ) ) {
-			$expires_at = substr( trim( (string) $data['expires_at'] ), 0, 10 );
-		}
+		$normalized = Status::normalize_tier( $tier );
 		return array(
-			'tier'       => Status::normalize_tier( $tier ),
-			'expires_at' => $expires_at,
+			'tier'       => $normalized,
+			'expires_at' => self::expires_at_for( $normalized, $data['expires_at'] ?? null ),
 		);
+	}
+	private static function expires_at_for( string $tier, $expires_at ): string {
+		if ( Status::TIER_PRO !== $tier || ! is_scalar( $expires_at ) ) {
+			return '';
+		}
+		return substr( trim( (string) $expires_at ), 0, 10 );
 	}
 	public function fetch_prompts( string $license_id, string $site_url, array $keys ): array {
 		$data = $this->post(

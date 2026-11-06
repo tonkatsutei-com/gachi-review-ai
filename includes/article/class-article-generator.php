@@ -44,9 +44,10 @@ final class Article_Generator {
 	private const MAX_CANDIDATE_THREADS = 60;
 	private const PROMPT_CATEGORY_LIMIT = 50;
 	private const PROMPT_TAG_LIMIT = 100;
-	private const AI_REVIEW_TYPES = array( 'quote' );
+	private const AI_REVIEW_TYPES = array( 'summary', 'quote', 'experience', 'dialogue' );
 	private const TYPE_INSTRUCTIONS = array(
-		'summary' => '総評型: 複数のレビュー（複数ソースの投稿とコメント）を分析して共通点・相違点をまとめ、書く人の言葉で要約してください（元の投稿をそのまま引用しない）。長所・短所は「ul」ブロックの箇条書きにしてかまいません。',
+		'summary' => '総評型: 複数のレビュー（複数ソースの投稿とコメント）を分析して共通点・相違点をまとめ、書く人の言葉で要約してください（元の投稿をそのまま引用しない）。長所・短所は「ul」ブロックの箇条書きにしてかまいません。**見出し（h2/h3）・本文とも、書き手自身が実際にその商品を使用した体験（例:「実際に使ってみた」「1ヶ月愛用した結果」）としては書かず、収集したレビューの分析・要約として書いてください（景品表示法の観点）。**',
+		'quote'   => '引用型: 複数のレビューから高評価と低評価の声を数件ずつ取り上げてください。引用は「quote」ブロック（{"type":"quote","review":n,"text":"日本語訳","original":"原文"}。review は引用元の【レビュー n】の番号、text は引用文の日本語訳）で入れ、見出し（h2）で「高評価の声」「低評価の声」のように分け、文末に「総評」の見出しと段落（p）を付けてください。**引用元が英語のときは原文を original にそのまま入れ**（翻訳を text、原文を original）、日本語のときは original を省略してください。引用文には出典（サイト名・記事タイトル）を含めず、引用の本文だけを書いてください（出典は自動で付きます）。「高評価の声」「低評価の声」の各項目は、書き出し（最初の語）・口調・文の長さ・触れる観点を互いに変え、「ただ」「ただし」「しかし」「でも」のような同じ接続詞で連続して始めないでください。書き出しの型（結論から／体験から／購入のきっかけから／意外な点から など）も項目ごとに重複させないでください（実際の口コミらしい自然さを出す）。',
 	);
 	private Settings $settings;
 	private Product_Ledger $ledger;
@@ -185,7 +186,7 @@ final class Article_Generator {
 					);
 				}
 			}
-			if ( array() === $reviews && Ai_Review::is_off() ) {
+			if ( array() === $reviews ) {
 				throw $this->empty_reviews_exception( $force, $matched, $excluded, $used );
 			}
 			$collected = is_array( $collected ) ? $collected : array();
@@ -760,7 +761,7 @@ final class Article_Generator {
 	private function generate_draft( Site_Profile $profile, array $product, array $reviews ): array {
 		$llm = $this->settings->active_llm();
 		if ( '' === (string) ( $llm['api_key'] ?? '' ) ) {
-			throw new \RuntimeException( __( 'API キーが未設定のため記事を生成できません。「LLM設定」タブで LLM の API キーを保存してください。', GACHIREAI_TEXT_DOMAIN ) );
+			throw new \RuntimeException( __( 'API キーが未設定のため記事を生成できません。「AI設定」タブで LLM の API キーを保存してください。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		$material = $this->reviews_material( $reviews );
 		$type = $this->article_type();
@@ -791,7 +792,12 @@ final class Article_Generator {
 		Generate_Progress::update( get_current_user_id(), __( '商品を照合中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_AFFILIATE, Generate_Progress::STEP_TOTAL );
 		$affiliate = $this->affiliate( $product );
 		$affiliate_context = $this->ec_affiliate_context();
-		$source_credits = self::source_credits_map( $reviews, $affiliate_context );
+		$affiliate_item  = (array) ( $affiliate['item'] ?? array() );
+		$review_page_url = (string) ( $affiliate_item['item_url'] ?? '' );
+		if ( '' === $review_page_url ) {
+			$review_page_url = (string) ( $affiliate_item['affiliate_url'] ?? '' );
+		}
+		$source_credits = self::source_credits_map( $reviews, $affiliate_context, $review_page_url );
 		Generate_Progress::update( get_current_user_id(), __( '本文を組み立て中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_ASSEMBLE, Generate_Progress::STEP_TOTAL );
 		$parts = array();
 		$lead = trim( (string) $article['lead'] );
@@ -806,9 +812,15 @@ final class Article_Generator {
 				Card_Settings::positions( $this->settings )
 			);
 		}
+		$disclosure_top  = Disclosure_Shortcode::block( Settings::DISCLOSURE_POSITION_TOP );
 		$eyecatch_prefix = Eyecatch_Shortcode::prefix_blocks();
-		if ( '' !== $eyecatch_prefix ) {
-			$content = $eyecatch_prefix . "\n\n" . $content;
+		$prefix_blocks   = array_filter( array( $disclosure_top, $eyecatch_prefix ), 'strlen' );
+		if ( array() !== $prefix_blocks ) {
+			$content = implode( "\n\n", $prefix_blocks ) . "\n\n" . $content;
+		}
+		$disclosure_bottom = Disclosure_Shortcode::block( Settings::DISCLOSURE_POSITION_BOTTOM );
+		if ( '' !== $disclosure_bottom ) {
+			$content = $content . "\n\n" . $disclosure_bottom;
 		}
 		Generate_Progress::update( get_current_user_id(), __( '記事を保存中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_SAVE, Generate_Progress::STEP_TOTAL );
 		$slug = self::post_slug( $article );
@@ -1125,7 +1137,7 @@ final class Article_Generator {
 			if ( 'quote' === $type ) {
 				$review = (int) ( $block['review'] ?? 0 );
 				$credit = ( $review > 0 && isset( $source_credits[ $review ] ) ) ? (array) $source_credits[ $review ] : array();
-				if ( array() !== $credit && Ai_Review::is_off() ) {
+				if ( array() !== $credit ) {
 					$has_cite = true;
 					$cite_url = (string) ( $credit['url'] ?? '' );
 				}
@@ -1193,12 +1205,27 @@ final class Article_Generator {
 	private static function strip_dialogue_prefix( string $text ): string {
 		return trim( (string) preg_replace( '/^\s*メン(?:ター|ティー)\s*[:：]\s*/u', '', $text, 1 ) );
 	}
-	private static function source_credits_map( array $reviews, ?array $affiliate_context = null ): array {
+	private static function source_credits_map( array $reviews, ?array $affiliate_context = null, string $review_page_url = '' ): array {
 		$credits = array();
 		foreach ( array_values( $reviews ) as $index => $thread ) {
 			$thread = (array) $thread;
 			$source = (string) ( $thread['source'] ?? '' );
 			if ( Ai_Review_Generator::SOURCE === $source ) {
+				$slug  = is_array( $affiliate_context ) ? (string) ( $affiliate_context['slug'] ?? '' ) : '';
+				$label = '' !== $slug ? Product_Selector::ec_label( $slug ) : '';
+				$url   = '' !== $review_page_url
+					? self::source_url( 'ec', array( 'url' => $review_page_url ), $affiliate_context )
+					: '';
+				if ( '' === $label || '' === $url ) {
+					continue;
+				}
+				$credits[ $index + 1 ] = array(
+					'url'          => $url,
+					'original_url' => $review_page_url,
+					'icon_url'     => Icons::ec( $slug ),
+					'label'        => $label,
+					'source'       => $source,
+				);
 				continue;
 			}
 			$label = self::source_label( $source, (string) ( $thread['community'] ?? '' ) );
@@ -1290,7 +1317,10 @@ final class Article_Generator {
 		$article = (array) $this->settings->get( 'article', array() );
 		$type    = (string) ( $article['article_type'] ?? 'summary' );
 		$allowed = Status::capabilities()->allowed_article_types();
-		return in_array( $type, $allowed, true ) ? $type : 'summary';
+		if ( in_array( $type, $allowed, true ) ) {
+			return $type;
+		}
+		return (string) ( $allowed[0] ?? 'summary' );
 	}
 	private function dialogue_context(): string {
 		$article  = (array) $this->settings->get( 'article', array() );
@@ -1353,6 +1383,7 @@ final class Article_Generator {
 				'低評価・欠点も、素材に書かれている範囲で必ず取り上げてください。素材に無い欠点・事実を創作しないでください。',
 				'箇条書き（ul）の各項目は、同じ接続詞・同じ文型で始めないでください。項目ごとに書き出しの型・文の長さ・語尾・触れる観点を変え、1 つずつが別人の声のように独立した自然な表現になるようにしてください。',
 				'生データに書かれていない事実（価格・受賞歴・数値など）を創作しないでください。',
+				'見出し・本文とも、書き手自身が実際にその商品を使用した体験として書かないでください（「実際に使ってみた」「1ヶ月使った結果」等は避ける）。収集したレビューの分析・要約として書いてください。',
 				'生データが英語の場合は、意味を変えずに日本語で書いてください。',
 				'書く人の文体・口調・スタンス（ポジション）を厳密に守ってください。',
 			)

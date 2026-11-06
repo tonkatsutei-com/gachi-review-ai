@@ -29,7 +29,7 @@ final class Provider_Error {
 			case 504:
 				return __( "プロバイダー側で一時的な障害が起きています。\n少し待ってから再試行してください。", GACHIREAI_TEXT_DOMAIN );
 			case 503:
-				return __( "プロバイダー側が混雑しています。\n少し待ってから再試行してください。", GACHIREAI_TEXT_DOMAIN );
+				return __( "プロバイダー側が混雑しています。\n少し待ってから再試行してください。\nモデルを変えると通る場合があります。", GACHIREAI_TEXT_DOMAIN );
 		}
 		if ( $code >= 400 && $code < 500 && str_contains( $raw, 'response_format' ) ) {
 			return __( "このモデルは JSON 出力の指定に対応していない可能性があります。\n開発者に連絡してください。\ninfo@tonkatsutei.com", GACHIREAI_TEXT_DOMAIN );

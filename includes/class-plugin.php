@@ -6,6 +6,7 @@ use Tonkatsutei\Gachi_Review_AI\Affiliate\Box_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Card_Settings;
 use Tonkatsutei\Gachi_Review_AI\Article\Auto_Post_Scheduler;
 use Tonkatsutei\Gachi_Review_AI\Article\Dialogue_Shortcode;
+use Tonkatsutei\Gachi_Review_AI\Article\Disclosure_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Article\Eyecatch_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Article\Retention_Cleaner;
 use Tonkatsutei\Gachi_Review_AI\Article\Source_Shortcode;
@@ -45,6 +46,7 @@ final class Plugin {
 		add_action( 'admin_init', array( Activator::class, 'migrate_review_common_settings' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_review_sources' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_common_overrides' ) );
+		add_action( 'admin_init', array( Activator::class, 'migrate_disclosure' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_verified_records' ) );
 		Auto_Post_Scheduler::register_hooks();
 		add_action( 'admin_init', array( Auto_Post_Scheduler::class, 'sync' ) );
@@ -53,6 +55,7 @@ final class Plugin {
 		Box_Shortcode::register();
 		Source_Shortcode::register();
 		Eyecatch_Shortcode::register();
+		Disclosure_Shortcode::register();
 		Dialogue_Shortcode::register();
 		Top_Page_Shortcode::register();
 		Ogp::register();

@@ -346,6 +346,9 @@ final class Product_Selector {
 		foreach ( $genres as $genre ) {
 			$genre_id = (string) ( $genre['genre_id'] ?? '' );
 			$name     = (string) ( $genre['name'] ?? $genre_id );
+			if ( self::EC_AMAZON === $ec && self::amazon_uses_sorts( $this->settings ) && '' === $genre_id ) {
+				continue;
+			}
 			$query   = ( self::EC_AMAZON === $ec || '' === $genre_id ) ? $name : '';
 			$search  = $this->search( $ec, $query, $sort, $genre_id );
 			$tried[] = $name;
@@ -366,6 +369,13 @@ final class Product_Selector {
 			if ( array() !== $outcome['product'] ) {
 				return $this->selected( $outcome['product'], '', $genre_id );
 			}
+		}
+		if ( self::EC_AMAZON === $ec && self::amazon_uses_sorts( $this->settings ) && array() === $tried ) {
+			return $this->result(
+				self::STATUS_NO_HIT,
+				__( 'Amazon（Creators API）のカテゴリーを解決できませんでした。③サイト設定の「扱うジャンル」を、Amazon のカテゴリーから選び直してください。', GACHIREAI_TEXT_DOMAIN ),
+				self::REASON_NO_SETUP
+			);
 		}
 		if ( array() !== $repost ) {
 			return $this->selected( (array) $repost['product'], '', (string) ( $repost['genre_id'] ?? '' ) );
@@ -391,11 +401,22 @@ final class Product_Selector {
 		$pairs = array();
 		foreach ( $keywords as $keyword ) {
 			foreach ( $genres as $genre ) {
+				$genre_id = (string) ( $genre['genre_id'] ?? '' );
+				if ( self::EC_AMAZON === $ec && self::amazon_uses_sorts( $this->settings ) && '' === $genre_id ) {
+					continue;
+				}
 				$pairs[] = array(
 					'keyword'  => $keyword,
-					'genre_id' => (string) ( $genre['genre_id'] ?? '' ),
+					'genre_id' => $genre_id,
 				);
 			}
+		}
+		if ( array() === $pairs ) {
+			return $this->result(
+				self::STATUS_NO_HIT,
+				__( 'Amazon（Creators API）のカテゴリーを解決できませんでした。③サイト設定の「扱うジャンル」を、Amazon のカテゴリーから選び直してください。', GACHIREAI_TEXT_DOMAIN ),
+				self::REASON_NO_SETUP
+			);
 		}
 		shuffle( $pairs );
 		$tried   = array();

@@ -75,7 +75,7 @@ final class Maintenance extends Screen
 				array('response' => 500)
 			);
 		}
-		$filename = 'gachi-review-ai-backup-' . gmdate('Ymd-His') . '.json';
+		$filename = 'gachi-review-ai-backup-' . current_time('Ymd-His') . '.json';
 		nocache_headers();
 		header('Content-Type: application/json; charset=utf-8');
 		header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -1048,7 +1048,7 @@ final class Maintenance extends Screen
 			'notices'    => array(),
 			'tabs'       => $this->tab_nav(),
 			'backup_title'         => esc_html__('バックアップ', GACHIREAI_TEXT_DOMAIN),
-			'backup_description'   => esc_html__('Gachi Reviews.AI の設定（ライセンスを含む）を JSON でダウンロードします。', GACHIREAI_TEXT_DOMAIN),
+			'backup_description'   => esc_html__('ガチレビュー.AI の設定（ライセンスを含む）を JSON でダウンロードします。', GACHIREAI_TEXT_DOMAIN),
 			'backup_action_url'    => esc_url(admin_url('admin-post.php')),
 			'backup_hidden_fields' => $this->hidden_fields(self::ACTION_BACKUP, self::NONCE_BACKUP),
 			'backup_sites_label'       => esc_html__('対象サイト', GACHIREAI_TEXT_DOMAIN),

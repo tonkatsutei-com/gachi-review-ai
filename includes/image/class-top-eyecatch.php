@@ -16,7 +16,7 @@ final class Top_Eyecatch {
 	public function is_available(): bool {
 		return Manager::is_available( $this->settings->image(), $this->settings );
 	}
-	public function generate(): array {
+	public function generate( ?string $site_name = null, ?string $description = null ): array {
 		$image   = $this->settings->image();
 		$api_key = $this->settings->image_api_key( $image );
 		if ( '' === $api_key ) {
@@ -40,7 +40,11 @@ final class Top_Eyecatch {
 		);
 		$processed = Processor::cover( $generated['data'], self::WIDTH, self::HEIGHT, 'image/jpeg' );
 		$elements  = $this->profile->get_site_elements();
-		$site_name = (string) ( $elements['site_name'] ?? '' );
+		$site_name   = null !== $site_name ? $site_name : (string) ( $elements['site_name'] ?? '' );
+		$description = null !== $description ? $description : (string) ( $elements['description'] ?? '' );
+		if ( '' === trim( $site_name ) ) {
+			$site_name = (string) get_bloginfo( 'name' );
+		}
 		$warnings  = array();
 		$data      = $processed;
 		$base_id   = 0;
@@ -71,7 +75,7 @@ final class Top_Eyecatch {
 				array(
 					'site_name'    => '',
 					'title'        => $site_name,
-					'product_name' => self::subtitle( (string) ( $elements['description'] ?? '' ) ),
+					'product_name' => self::subtitle( $description ),
 				),
 				(string) $image['text_side'],
 				$font_path

@@ -16,7 +16,7 @@ final class Ec_Review_Rewriter {
 		return '' !== (string) ( $this->llm['api_key'] ?? '' );
 	}
 	public static function unavailable_message(): string {
-		return __( 'API キーが未設定のため、EC公式サイトのレビューをAIで加工できません。「LLM設定」タブで LLM の API キーを保存するか、「リライト」で「リスクを承知でそのまま転載する」を選んでください。', GACHIREAI_TEXT_DOMAIN );
+		return __( 'API キーが未設定のため、EC公式サイトのレビューをAIで加工できません。「AI設定」タブで LLM の API キーを保存するか、「リライト」で「リスクを承知でそのまま転載する」を選んでください。', GACHIREAI_TEXT_DOMAIN );
 	}
 	public function process( array $reviews, array $product ): array {
 		$mode = Ec_Review_Use::mode();

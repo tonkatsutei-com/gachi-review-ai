@@ -9,6 +9,8 @@ abstract class Openai_Compatible_Provider implements Provider {
 	protected const SLUG = '';
 	protected const ENDPOINT = '';
 	protected const LABEL = 'OpenAI 互換';
+	private const TIMEOUT = 120;
+	private int $timeout = self::TIMEOUT;
 	private string $api_key;
 	private string $model;
 	public function __construct( string $api_key, string $model = '' ) {
@@ -22,9 +24,10 @@ abstract class Openai_Compatible_Provider implements Provider {
 		return true;
 	}
 	public function generate( string $system, string $user, array $opts = array() ): array {
+		$this->timeout = max( 1, (int) ( $opts['timeout'] ?? self::TIMEOUT ) );
 		$response = $this->request( $this->payload( $system, $user, $opts ) );
 		if ( is_wp_error( $response ) ) {
-			throw new \RuntimeException( static::LABEL . ' リクエストに失敗しました: ' . $response->get_error_message() );
+			throw self::timeout_exception( $response->get_error_message() );
 		}
 		$body = $this->decode( $response );
 		if ( ! $this->has_choices( $body ) ) {
@@ -32,7 +35,7 @@ abstract class Openai_Compatible_Provider implements Provider {
 			if ( null !== $retry ) {
 				$response = $this->request( $retry );
 				if ( is_wp_error( $response ) ) {
-					throw new \RuntimeException( static::LABEL . ' リクエストに失敗しました: ' . $response->get_error_message() );
+					throw self::timeout_exception( $response->get_error_message() );
 				}
 				$body = $this->decode( $response );
 			}
@@ -44,6 +47,16 @@ abstract class Openai_Compatible_Provider implements Provider {
 			'content'       => (string) ( $body['choices'][0]['message']['content'] ?? '' ),
 			'usage'         => is_array( $body['usage'] ?? null ) ? $body['usage'] : array(),
 			'finish_reason' => (string) ( $body['choices'][0]['finish_reason'] ?? '' ),
+		);
+	}
+	private static function timeout_exception( string $detail ): Provider_Exception {
+		return new Provider_Exception(
+			sprintf(
+				__( "%1\$s に接続できませんでした（タイムアウトの可能性があります）。\n時間をおいて再試行するか、モデルを変えてください。\n%2\$s", GACHIREAI_TEXT_DOMAIN ),
+				static::LABEL,
+				$detail
+			),
+			0
 		);
 	}
 	private function payload( string $system, string $user, array $opts ): array {
@@ -65,7 +78,7 @@ abstract class Openai_Compatible_Provider implements Provider {
 		return wp_remote_post(
 			static::ENDPOINT,
 			array(
-				'timeout' => 120,
+				'timeout' => $this->timeout,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $this->api_key,
 					'Content-Type'  => 'application/json',

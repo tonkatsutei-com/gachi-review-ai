@@ -102,7 +102,11 @@ final class Status {
 		return (string) Store::cache()['error'];
 	}
 	public static function expires_at(): string {
-		return (string) Store::cache()['expires_at'];
+		$cache = Store::cache();
+		if ( self::TIER_PRO !== self::normalize_tier( (string) $cache['tier'] ) ) {
+			return '';
+		}
+		return (string) $cache['expires_at'];
 	}
 	public static function verified_at(): int {
 		return (int) Store::cache()['verified_at'];

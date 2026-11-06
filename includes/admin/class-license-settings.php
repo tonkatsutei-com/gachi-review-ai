@@ -26,7 +26,7 @@ final class License_Settings {
 			),
 			array(
 				__( '記事タイプ', GACHIREAI_TEXT_DOMAIN ),
-				array( __( '総評型のみ', GACHIREAI_TEXT_DOMAIN ), 'partial' ),
+				array( __( '引用型のみ', GACHIREAI_TEXT_DOMAIN ), 'partial' ),
 				array( __( '総評型・引用型・体験談型', GACHIREAI_TEXT_DOMAIN ), 'partial' ),
 				array( __( '全タイプ（対話形式を含む）', GACHIREAI_TEXT_DOMAIN ), 'full' ),
 			),
@@ -189,7 +189,7 @@ final class License_Settings {
 		if ( Status::TIER_FREE === $plan ) {
 			return __( '未認証（FREE）', GACHIREAI_TEXT_DOMAIN );
 		}
-		$expires = substr( trim( Status::expires_at() ), 0, 10 );
+		$expires = Status::TIER_BASIC === $plan ? '' : substr( trim( Status::expires_at() ), 0, 10 );
 		if ( 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $expires ) ) {
 			return sprintf(
 				__( '%1$sライセンス（有効期限: %2$s）', GACHIREAI_TEXT_DOMAIN ),

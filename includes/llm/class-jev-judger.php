@@ -211,7 +211,7 @@ final class Jev_Judger {
 			Event_Logger::record(
 				Event_Logger::TYPE_COLLECT,
 				Event_Logger::LEVEL_WARN,
-				__( 'Jev の API キーが未設定のため、レビューの判定を行いませんでした（判定なし＝現行どおり採用します）。「LLM設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ),
+				__( 'Jev の API キーが未設定のため、レビューの判定を行いませんでした（判定なし＝現行どおり採用します）。「AI設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ),
 				$payload
 			);
 			return;

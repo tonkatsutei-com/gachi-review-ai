@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Admin;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Amazon_Client;
+use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Image\Favicon;
@@ -30,6 +31,9 @@ final class Site_Setup extends Screen {
 	private const SECTION_SCOPE = 'scope';
 	private const SECTION_PERSONA = 'my_persona';
 	private const SECTION_TARGET = 'target';
+	private const ACTION_DISCLOSURE = 'save_disclosure';
+	private const NONCE_ACTION_DISCLOSURE = 'gachireai_save_disclosure';
+	private const DISCLOSURE_GROUP = 'disclosure';
 	private const SCOPE_CONFIRM_FIELD = 'gachireai_scope_confirm_delete';
 	private const SCOPE_MIXED_ARG = 'gachireai_scope_mixed';
 	private const SCOPE_MIXED_TRANSIENT_PREFIX = 'gachireai_scope_mixed_';
@@ -187,6 +191,107 @@ final class Site_Setup extends Screen {
 		}
 		wp_safe_redirect( Tabs::url( Tabs::TAB_SITE, array( $result['arg'] => '1' ) ) );
 		exit;
+	}
+	public function maybe_save_disclosure(): void {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+		if ( ! isset( $_POST[ self::ACTION_FIELD ] ) ) {
+			return;
+		}
+		if ( self::ACTION_DISCLOSURE !== sanitize_key( wp_unslash( (string) $_POST[ self::ACTION_FIELD ] ) ) ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die(
+				esc_html__( 'この操作を行う権限がありません。', GACHIREAI_TEXT_DOMAIN ),
+				esc_html__( 'gachi-review-ai', GACHIREAI_TEXT_DOMAIN ),
+				array( 'response' => 403 )
+			);
+		}
+		check_admin_referer( self::NONCE_ACTION_DISCLOSURE );
+		$settings = new Settings();
+		$posted   = $this->posted_array( self::DISCLOSURE_GROUP ) ?? array();
+		$current  = $settings->disclosure();
+		$flat     = array();
+		foreach ( $current as $key => $item ) {
+			$flat[ $key . '_enabled' ]  = $item['enabled'];
+			$flat[ $key . '_position' ] = $item['position'];
+			$flat[ $key . '_text' ]     = $item['text'];
+		}
+		$form  = new Form( $this->disclosure_definitions() );
+		$clean = $form->sanitize( $posted, $flat );
+		$settings->set( self::DISCLOSURE_GROUP, $clean );
+		$this->record_setting_save( __( '開示', GACHIREAI_TEXT_DOMAIN ) );
+		wp_safe_redirect( Tabs::url( Tabs::TAB_SITE, array( 'gachireai_disclosure_saved' => '1' ) ) . '#gachireai-section-disclosure' );
+		exit;
+	}
+	private function disclosure_definitions(): array {
+		$items = array(
+			'affiliate' => __( 'アフィリエイト', GACHIREAI_TEXT_DOMAIN ),
+			'image'     => __( 'AI生成画像', GACHIREAI_TEXT_DOMAIN ),
+			'review'    => __( 'AIレビュー', GACHIREAI_TEXT_DOMAIN ),
+			'article'   => __( 'AI生成記事', GACHIREAI_TEXT_DOMAIN ),
+		);
+		$definitions = array();
+		foreach ( $items as $key => $label ) {
+			$definitions[ $key . '_enabled' ] = array(
+				'label'   => sprintf(
+					__( '%sの開示', GACHIREAI_TEXT_DOMAIN ),
+					$label
+				),
+				'type'    => 'checkbox',
+				'options' => array( '1' => __( '表示する', GACHIREAI_TEXT_DOMAIN ) ),
+			);
+			$definitions[ $key . '_position' ] = array(
+				'label'   => __( '表示位置', GACHIREAI_TEXT_DOMAIN ),
+				'type'    => 'radio',
+				'options' => array(
+					Settings::DISCLOSURE_POSITION_TOP    => __( '記事冒頭', GACHIREAI_TEXT_DOMAIN ),
+					Settings::DISCLOSURE_POSITION_BOTTOM => __( '記事末尾', GACHIREAI_TEXT_DOMAIN ),
+				),
+				'default' => Settings::DISCLOSURE_POSITION_TOP,
+			);
+			$definitions[ $key . '_text' ] = array(
+				'label'       => __( '開示文', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'textarea',
+				'rows'        => 2,
+				'max'         => 300,
+				'placeholder' => Settings::DISCLOSURE_DEFAULT_TEXTS[ $key ],
+			);
+		}
+		return $definitions;
+	}
+	private function disclosure_blocks(): array {
+		$settings = new Settings();
+		$values   = array();
+		foreach ( $settings->disclosure() as $key => $item ) {
+			$values[ $key . '_enabled' ]  = $item['enabled'];
+			$values[ $key . '_position' ] = $item['position'];
+			$values[ $key . '_text' ]     = $item['text'];
+		}
+		$form   = new Form( $this->disclosure_definitions() );
+		$labels = array(
+			'affiliate' => __( 'アフィリエイト', GACHIREAI_TEXT_DOMAIN ),
+			'image'     => __( 'AI生成画像', GACHIREAI_TEXT_DOMAIN ),
+			'review'    => __( 'AIレビュー', GACHIREAI_TEXT_DOMAIN ),
+			'article'   => __( 'AI生成記事', GACHIREAI_TEXT_DOMAIN ),
+		);
+		$blocks = array();
+		foreach ( $labels as $key => $label ) {
+			$blocks[] = array(
+				'block_key'      => 'disclosure_' . $key,
+				'block_title'    => esc_html( $label ),
+				'fields'         => $form->build_list(
+					$values,
+					array( $key . '_enabled', $key . '_position', $key . '_text' ),
+					self::DISCLOSURE_GROUP
+				),
+				'block_buttons'  => array(),
+				'block_messages' => array(),
+			);
+		}
+		return $blocks;
 	}
 	public function maybe_save_elements(): void {
 		if ( wp_doing_ajax() ) {
@@ -491,7 +596,9 @@ final class Site_Setup extends Screen {
 	public function ajax_generate_top_eyecatch(): void {
 		$this->guard_ajax( self::NONCE_ACTION_SITE_IMAGES );
 		$this->save_posted_site_images();
-		$result  = $this->generate_top_eyecatch_result();
+		$site_name = isset( $_POST['site_name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['site_name'] ) ) : null;
+		$site_description = isset( $_POST['site_description'] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['site_description'] ) ) : null;
+		$result  = $this->generate_top_eyecatch_result( $site_name, $site_description );
 		$message = $this->message( (string) $result['type'], esc_html( (string) $result['message'] ) );
 		$this->send_form_html(
 			fn(): string => $this->render_site_images_form(
@@ -543,10 +650,12 @@ final class Site_Setup extends Screen {
 		$font = isset( $_POST['font'] ) ? sanitize_key( wp_unslash( (string) $_POST['font'] ) ) : Font_Catalog::DEFAULT_FONT;
 		$weight = isset( $_POST['font_weight'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['font_weight'] ) ) : Font_Catalog::DEFAULT_WEIGHT;
 		$top_eyecatch_id = isset( $_POST['top_eyecatch'] ) ? absint( wp_unslash( (string) $_POST['top_eyecatch'] ) ) : 0;
+		$site_name = isset( $_POST['site_name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['site_name'] ) ) : null;
+		$site_description = isset( $_POST['site_description'] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['site_description'] ) ) : null;
 		$font   = Font_Manager::normalize_font( $font );
 		$weight = Font_Manager::normalize_weight( $font, $weight );
 		try {
-			$preview = Font_Preview::render( $font, $weight, $top_eyecatch_id );
+			$preview = Font_Preview::render( $font, $weight, $top_eyecatch_id, $site_name, $site_description );
 			wp_send_json_success( $preview );
 		} catch ( \Throwable $e ) {
 			wp_send_json_error( array( 'message' => esc_html( $e->getMessage() ) ) );
@@ -710,6 +819,7 @@ final class Site_Setup extends Screen {
 			$font,
 			(string) ( $clean['font_weight'] ?? Font_Catalog::DEFAULT_WEIGHT )
 		);
+		$current = Connection_Status::preserve_record_keys( self::IMAGE_KEY, $current, $settings );
 		$settings->set( self::IMAGE_KEY, $current );
 	}
 	private function generate_favicon_result(): array {
@@ -744,9 +854,9 @@ final class Site_Setup extends Screen {
 			);
 		}
 	}
-	private function generate_top_eyecatch_result(): array {
+	private function generate_top_eyecatch_result( ?string $site_name = null, ?string $description = null ): array {
 		try {
-			$result = ( new Top_Eyecatch() )->generate();
+			$result = ( new Top_Eyecatch() )->generate( $site_name, $description );
 			return array(
 				'type'          => 'success',
 				'message'       => (string) $result['message'],
@@ -1159,7 +1269,7 @@ final class Site_Setup extends Screen {
 	}
 	private function scope_mixed_model( array $entries ): array {
 		if ( array() === $entries ) {
-			return array( 'scope_mixed' => false );
+			return array( 'show_scope_dialog' => false );
 		}
 		$rows = array();
 		foreach ( $entries as $entry ) {
@@ -1168,7 +1278,7 @@ final class Site_Setup extends Screen {
 			);
 		}
 		return array(
-			'scope_mixed'              => true,
+			'show_scope_dialog'        => true,
 			'scope_mixed_title'        => esc_html__( '別のECのカテゴリーが混じっています', GACHIREAI_TEXT_DOMAIN ),
 			'scope_mixed_desc'         => esc_html(
 				sprintf(
@@ -1276,7 +1386,7 @@ final class Site_Setup extends Screen {
 		$site_images['site_images_messages'] = $site_images_notices;
 		return array(
 			'page_title'    => esc_html__( 'サイト設定', GACHIREAI_TEXT_DOMAIN ),
-			'scope_mixed'   => false,
+			'show_scope_dialog' => false,
 			'notices'       => $notices,
 			'tabs'          => $this->tab_nav(),
 			'form_action'   => esc_url( Tabs::url( Tabs::TAB_SITE ) ),
@@ -1407,6 +1517,25 @@ final class Site_Setup extends Screen {
 			'static_pages_generate_policy_action' => esc_attr( self::AJAX_ACTION_GENERATE_POLICY ),
 			'static_pages_top_messages'    => array(),
 			'static_pages_policy_messages' => array(),
+			'disclosure_form_action'   => esc_url( Tabs::url( Tabs::TAB_SITE ) ),
+			'disclosure_hidden_fields' => array(
+				array(
+					'name'  => esc_attr( self::ACTION_FIELD ),
+					'value' => esc_attr( self::ACTION_DISCLOSURE ),
+				),
+				array(
+					'name'  => esc_attr( '_wpnonce' ),
+					'value' => esc_attr( wp_create_nonce( self::NONCE_ACTION_DISCLOSURE ) ),
+				),
+			),
+			'disclosure_anchor'        => esc_attr( 'disclosure' ),
+			'disclosure_title'         => esc_html__( '開示', GACHIREAI_TEXT_DOMAIN ),
+			'disclosure_intro'         => esc_html__( "アフィリエイト広告・AI生成コンテンツであることを記事に表示します。\n表示ONの場合、選んだ位置（記事冒頭／記事末尾）に表示します。", GACHIREAI_TEXT_DOMAIN ),
+			'disclosure_blocks'        => $this->disclosure_blocks(),
+			'disclosure_messages'      => isset( $_GET['gachireai_disclosure_saved'] )
+				? array( $this->message( 'success', esc_html__( '保存しました。', GACHIREAI_TEXT_DOMAIN ) ) )
+				: array(),
+			'disclosure_submit_label'  => esc_html__( '開示を保存', GACHIREAI_TEXT_DOMAIN ),
 			'modal'                  => true,
 		) + $site_images + $this->picker( $this->saved_ec(), '', array() );
 	}
@@ -1858,7 +1987,7 @@ final class Site_Setup extends Screen {
 				'type'          => 'category',
 				'rows'          => 5,
 				'max'           => 1000,
-				'placeholder'   => __( '例: (ID:100371)イヤホン・ヘッドホン', GACHIREAI_TEXT_DOMAIN ),
+				'placeholder'   => __( '例: (ID:211742)TV・オーディオ・カメラ', GACHIREAI_TEXT_DOMAIN ),
 				'description'   => sprintf(
 					__( "カテゴリー限定・ニッチのときに入力します。\n`(カテゴリーID)%1\$s名` の形式で指定します。\n改行またはカンマで区切ってください。\n［%2\$sを選ぶ］で EC の実データ（取得済みの%2\$s）から選べます。\n手入力もできます。\n［クリア］は入力欄を空にするだけで、データベースには「保存」を押すまで反映しません。\nカテゴリー名は一部の商品で検索語としても使われます。", GACHIREAI_TEXT_DOMAIN ),
 					$term,
@@ -2280,10 +2409,20 @@ final class Site_Setup extends Screen {
 				'open_label'  => esc_html__( '下層を展開', GACHIREAI_TEXT_DOMAIN ),
 			);
 		}
-		$empty_message = sprintf(
-			__( 'この階層に子%sはありません。', GACHIREAI_TEXT_DOMAIN ),
-			$term
-		);
+		$level         = max( 0, count( $chain ) - 1 );
+		$limit         = $catalog->depth_limit( $ec );
+		$depth_limited = array() === $children && $limit > 0 && $level >= $limit;
+		if ( $depth_limited ) {
+			$empty_message = sprintf(
+				__( 'Free AMZN Creators API では第%d階層までしか取得できません。', GACHIREAI_TEXT_DOMAIN ),
+				$limit
+			);
+		} else {
+			$empty_message = sprintf(
+				__( 'この階層に子%sはありません。', GACHIREAI_TEXT_DOMAIN ),
+				$term
+			);
+		}
 		return array(
 			'body_id'       => esc_attr( self::PICKER_BODY_ID ),
 			'picker_id'     => esc_attr( self::PICKER_ID ),
@@ -2297,6 +2436,8 @@ final class Site_Setup extends Screen {
 			'path'          => $path,
 			'children'      => $rows,
 			'empty_message' => esc_html( $empty_message ),
+			'empty_class'   => esc_attr( $depth_limited ? 'description gachireai-field__warning' : 'description' ),
+			'depth_limited' => $depth_limited,
 			'messages'      => $messages,
 			'parent_id'     => esc_attr( $parent ),
 			'open_action'   => esc_attr( self::AJAX_ACTION_CATEGORY_OPEN ),
