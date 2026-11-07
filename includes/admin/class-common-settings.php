@@ -35,7 +35,7 @@ final class Common_Settings extends Screen {
 				$this->render_sections( $this->llm_sections() );
 				break;
 			case Common_Tabs::TAB_SCRAPING:
-				$this->render_sections( $this->scraping_sections() );
+				$this->render_sections( $this->scraping_sections(), Scraping_Legend::model() );
 				break;
 			case Common_Tabs::TAB_REVIEW:
 				$this->render_sections( $this->review_sections() );
@@ -66,12 +66,15 @@ final class Common_Settings extends Screen {
 		$maintenance->use_common_mode();
 		$maintenance->render();
 	}
-	private function render_sections( array $sections ): void {
+	private function render_sections( array $sections, array $tag_descriptions = array() ): void {
 		$model = array(
 			'page_title' => esc_html( Common_Tabs::heading( Common_Tabs::current() ) ),
 			'tabs'       => Common_Tabs::models( Common_Tabs::current() ),
 			'sections'   => $sections,
 		);
+		if ( array() !== $tag_descriptions ) {
+			$model['tag_descriptions'] = $tag_descriptions;
+		}
 		$this->render_template( 'admin/common-settings', $model );
 	}
 	private function asp_sections(): array {
@@ -160,13 +163,13 @@ final class Common_Settings extends Screen {
 		$store    = new Store();
 		$saved    = (array) $store->get( 'scraping.services', array() );
 		$sections = array();
-		foreach ( Service_Catalog::ids() as $id ) {
+		foreach ( Service_Catalog::all() as $id => $definition ) {
 			$row     = (array) ( $saved[ $id ] ?? array() );
 			$current = array( 'api_key' => (string) ( $row['api_key'] ?? '' ) );
 			$sections[] = $this->section_model(
 				'scraping_' . $id,
-				Service_Catalog::label( $id ),
-				__( 'Web スクレイピングサービスの API キーです。', GACHIREAI_TEXT_DOMAIN ),
+				$definition['label'],
+				$definition['features'],
 				array(
 					'api_key' => array(
 						'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
@@ -177,7 +180,11 @@ final class Common_Settings extends Screen {
 				),
 				'',
 				$current,
-				$current
+				$current,
+				array(
+					'used_by' => Scraping_Legend::tags( $id ),
+					'url'     => esc_url( $definition['url'] ),
+				)
 			);
 		}
 		return $sections;
@@ -207,7 +214,7 @@ final class Common_Settings extends Screen {
 			),
 		);
 	}
-	private function section_model( string $section, string $title, string $description, array $definitions, string $prefix, array $values, array $current ): array {
+	private function section_model( string $section, string $title, string $description, array $definitions, string $prefix, array $values, array $current, array $extra = array() ): array {
 		$form      = new Form( $definitions );
 		$keys      = array_keys( $definitions );
 		$display   = $values;
@@ -221,7 +228,7 @@ final class Common_Settings extends Screen {
 			$overrides[ $key ] = array( 'placeholder' => Form::mask_secret( $secret ) );
 		}
 		$override_sites = $this->override_sites( $section );
-		return array(
+		$model = array(
 			'section_key'   => esc_attr( 'common-' . $section ),
 			'title'         => esc_html( $title ),
 			'description'   => esc_html( $description ),
@@ -238,6 +245,7 @@ final class Common_Settings extends Screen {
 			'common_override_sites' => $override_sites,
 			'common_override_label' => esc_html__( 'このまとまりを独自設定しているサイト:', GACHIREAI_TEXT_DOMAIN ),
 		);
+		return array_merge( $model, $extra );
 	}
 	private function section_status( string $section ): string {
 		if ( str_starts_with( $section, 'scraping_' ) ) {

@@ -92,20 +92,9 @@ final class Scraping_Settings extends Screen {
 			'common_switch_title'       => esc_html__( '共通設定', GACHIREAI_TEXT_DOMAIN ),
 			'common_switch_description' => esc_html__( 'スクレイピング設定を全サイト共通にするか、このサイト独自の値を使うかを選びます。', GACHIREAI_TEXT_DOMAIN ),
 			'common_switch_save_label'  => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
-			'tag_descriptions'          => $this->tag_descriptions_model(),
+			'tag_descriptions'          => Scraping_Legend::model(),
 			'sections'                  => $this->sections_model(),
 		);
-	}
-	private function tag_descriptions_model(): array {
-		$items = array();
-		foreach ( Service_Catalog::used_by_descriptions() as $tag ) {
-			$items[] = array(
-				'tag_key'         => esc_attr( $tag['key'] ),
-				'tag_label'       => esc_html( $tag['label'] ),
-				'tag_description' => esc_html( $tag['description'] ),
-			);
-		}
-		return $items;
 	}
 	private function sections_model(): array {
 		$store = Store::all();
@@ -122,13 +111,7 @@ final class Scraping_Settings extends Screen {
 					$messages[] = $message;
 				}
 			}
-			$used_by = array();
-			foreach ( Service_Catalog::used_by_tags( $id ) as $tag ) {
-				$used_by[] = array(
-					'tag_key'   => esc_attr( $tag['key'] ),
-					'tag_label' => esc_html( $tag['label'] ),
-				);
-			}
+			$used_by = Scraping_Legend::tags( $id );
 			$sections[] = array(
 				'section_key'   => esc_attr( 'scraping-' . $id ),
 				'title'         => esc_html( $definition['label'] ),

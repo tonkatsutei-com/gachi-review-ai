@@ -273,6 +273,8 @@ class Settings {
 			'steps'        => $value( $image, 'steps', '4' ),
 			'reuse_llm'    => $value( $image, 'reuse_llm', '' ),
 			'style'        => $value( $image, 'style', 'cinematic' ),
+			'style_text'   => $value( $image, 'style_text', '' ),
+			'style_text_en' => $value( $image, 'style_text_en', '' ),
 			'text_overlay' => $value( $image, 'text_overlay', '1' ),
 			'text_side'    => $value( $image, 'text_side', 'left' ),
 			'prompt_llm'   => $value( $image, 'prompt_llm', '1' ),

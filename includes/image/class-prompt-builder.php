@@ -29,8 +29,7 @@ final class Prompt_Builder {
 	}
 	public function eyecatch_prompt( string $title, array $product = array() ): string {
 		$image    = $this->settings->image();
-		$style    = Image_Catalog::normalize_style( $image['style'] );
-		$style_en = Image_Catalog::style_prompt( $style );
+		$style_en = $this->effective_style_prompt( $image );
 		$side     = 'right' === $image['text_side'] ? 'right' : 'left';
 		$copy     = '1' === $image['text_overlay']
 			? sprintf( 'Leave the %s 50%% of the frame as clean, uncluttered negative space for a headline.', $side )
@@ -77,8 +76,7 @@ final class Prompt_Builder {
 	}
 	public function top_eyecatch_prompt(): string {
 		$image    = $this->settings->image();
-		$style    = Image_Catalog::normalize_style( $image['style'] );
-		$style_en = Image_Catalog::style_prompt( $style );
+		$style_en = $this->effective_style_prompt( $image );
 		$context  = $this->site_context();
 		$fallback = 'A calm, inviting editorial hero image for a Japanese product review website, a tidy modern lifestyle scene with natural window light, soft neutral tones, generous negative space, authentic magazine mood, not advertising-like. ' . $style_en;
 		$user = "Website context:\n{$context}\n\n"
@@ -109,7 +107,7 @@ final class Prompt_Builder {
 	}
 	public function profile_prompt(): string {
 		$image    = $this->settings->image();
-		$style_en = Image_Catalog::style_prompt( $image['style'] );
+		$style_en = $this->effective_style_prompt( $image );
 		$my       = $this->profile->get_my_persona();
 		$elements = $this->profile->get_site_elements();
 		$gender = 'female' === (string) ( $my['gender'] ?? '' ) ? 'woman' : 'man';
@@ -148,7 +146,7 @@ final class Prompt_Builder {
 	}
 	public function dialogue_mentee_prompt( array $character ): string {
 		$image    = $this->settings->image();
-		$style_en = Image_Catalog::style_prompt( $image['style'] );
+		$style_en = $this->effective_style_prompt( $image );
 		$gender  = self::gender_key( (string) ( $character['gender'] ?? '' ) );
 		$noun    = 'female' === $gender ? 'woman' : 'man';
 		$pronoun = 'female' === $gender ? 'her' : 'his';
@@ -262,9 +260,17 @@ final class Prompt_Builder {
 		}
 		return $text;
 	}
+	private function effective_style_prompt( array $image ): string {
+		$style = (string) ( $image['style'] ?? '' );
+		if ( Image_Catalog::STYLE_CUSTOM === $style ) {
+			$en = trim( (string) ( $image['style_text_en'] ?? '' ) );
+			return '' !== $en ? $en : trim( (string) ( $image['style_text'] ?? '' ) );
+		}
+		return Image_Catalog::style_prompt( $style );
+	}
 	private function finish( string $prompt, bool $with_style = true ): string {
 		$image = $this->settings->image();
-		$style = Image_Catalog::style_prompt( $image['style'] );
+		$style = $this->effective_style_prompt( $image );
 		$text  = trim( $prompt );
 		if ( $with_style && ! str_contains( $text, $style ) ) {
 			$text .= ' ' . $style;
@@ -274,7 +280,7 @@ final class Prompt_Builder {
 	}
 	private function finish_portrait( string $prompt ): string {
 		$image = $this->settings->image();
-		$style = Image_Catalog::style_prompt( $image['style'] );
+		$style = $this->effective_style_prompt( $image );
 		$text  = trim( $prompt );
 		if ( ! str_contains( $text, $style ) ) {
 			$text .= ' ' . $style;

@@ -50,7 +50,7 @@ final class Amazon_Client {
 	public static function free_amzn_available(): bool {
 		return class_exists( self::FREE_AMZN_CLASS ) && method_exists( self::FREE_AMZN_CLASS, 'search' );
 	}
-	private static function free_amzn_has_usable_service(): bool {
+	public static function free_amzn_has_usable_service(): bool {
 		if ( ! self::free_amzn_available() ) {
 			return false;
 		}

@@ -16,6 +16,7 @@ use Tonkatsutei\Gachi_Review_AI\Image\Top_Eyecatch;
 use Tonkatsutei\Gachi_Review_AI\License\Capabilities;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Llm\Keyword_Proposer;
+use Tonkatsutei\Gachi_Review_AI\Llm\Style_Proposer;
 use Tonkatsutei\Gachi_Review_AI\Policy\Policy_Page;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Generator;
@@ -82,6 +83,8 @@ final class Site_Setup extends Screen {
 	public const ACTION_SITE_IMAGES = 'save_site_images';
 	private const NONCE_ACTION_SITE_IMAGES = 'gachireai_save_site_images';
 	public const AJAX_ACTION_SAVE_SITE_IMAGES = 'gachireai_save_site_images';
+	public const AJAX_ACTION_PROPOSE_STYLE = 'gachireai_propose_image_style';
+	private const GENERATE_STYLE_FIELD = 'gachireai_propose_image_style';
 	private const SITE_IMAGES_SAVED_ARG = 'gachireai_site_images_saved';
 	private const SITE_IMAGES_GENERATED_ARG = 'gachireai_site_images_generated';
 	private const SITE_IMAGES_NOTICE_TRANSIENT_PREFIX = 'gachireai_site_images_notice_';
@@ -802,17 +805,20 @@ final class Site_Setup extends Screen {
 		$current  = $settings->image();
 		$form     = new Form(
 			array(
-				'style'       => $this->site_image_style_definition(),
-				'top_hero'    => $this->site_image_top_hero_definition(),
-				'ogp'         => $this->site_image_ogp_definition(),
-				'font'        => $this->site_image_font_definition(),
-				'font_weight' => $this->site_image_font_weight_definition(),
+				'style_family' => $this->site_image_style_family_definition(),
+				'style_text'   => $this->site_image_style_text_definition(),
+				'top_hero'     => $this->site_image_top_hero_definition(),
+				'ogp'          => $this->site_image_ogp_definition(),
+				'font'         => $this->site_image_font_definition(),
+				'font_weight'  => $this->site_image_font_weight_definition(),
 			)
 		);
 		$clean    = $form->sanitize( $raw, $current );
-		$current['style']    = (string) ( $clean['style'] ?? Image_Catalog::STYLE_CINEMATIC );
 		$current['top_hero'] = (string) ( $clean['top_hero'] ?? Settings::TOP_HERO_IMAGE_ONLY );
 		$current['ogp']      = (string) ( $clean['ogp'] ?? '' );
+		if ( array_key_exists( 'style_family', $raw ) || array_key_exists( 'style_text', $raw ) ) {
+			$current = $this->resolve_posted_image_style( $current, $clean );
+		}
 		$font                   = Font_Manager::normalize_font( (string) ( $clean['font'] ?? Font_Catalog::DEFAULT_FONT ) );
 		$current['font']        = $font;
 		$current['font_weight'] = Font_Manager::normalize_weight(
@@ -1592,6 +1598,11 @@ final class Site_Setup extends Screen {
 			if ( ! empty( $item['el_is_font'] ) && isset( $messages['font'] ) ) {
 				$items[ $index ]['font_messages'] = (array) $messages['font'];
 			}
+			if ( ! empty( $item['el_is_field'] ) && isset( $item['name'] ) && is_scalar( $item['name'] ) ) {
+				if ( self::IMAGE_KEY . '[style_text]' === (string) $item['name'] && isset( $messages['style'] ) ) {
+					$items[ $index ]['field_messages'] = (array) $messages['style'];
+				}
+			}
 		}
 		return $items;
 	}
@@ -1737,7 +1748,7 @@ final class Site_Setup extends Screen {
 			'site_images_anchor'        => esc_attr( 'site_images' ),
 			'site_images_intro'         => esc_html__( 'AIで生成する画像の設定です。', GACHIREAI_TEXT_DOMAIN ),
 			'site_images_items'         => array(
-				$this->site_image_style_model(),
+				...$this->site_image_style_models( $site_image_overrides ),
 				$this->element_favicon_model( $favicon_override ),
 				$this->profile_image_model( $my_persona ),
 				$this->eyecatch_group_model( $site_images, $site_image_overrides, $top_eyecatch_url ),
@@ -1759,13 +1770,37 @@ final class Site_Setup extends Screen {
 		$field['el_is_image'] = true;
 		return $field;
 	}
-	private function site_image_style_model(): array {
+	private function site_image_style_models( array $overrides = array() ): array {
 		$settings = new Settings();
-		$form     = new Form( array( 'style' => $this->site_image_style_definition() ) );
-		$fields   = $form->build_list( $settings->image(), array( 'style' ), self::IMAGE_KEY );
-		$field    = $fields[0] ?? array();
-		$field['el_is_field'] = true;
-		return $field;
+		$image    = $settings->image();
+		$family = isset( $overrides['style_family'] ) && is_scalar( $overrides['style_family'] )
+			? (string) $overrides['style_family']
+			: Image_Catalog::family_of( (string) ( $image['style'] ?? '' ) );
+		$text   = isset( $overrides['style_text'] ) && is_scalar( $overrides['style_text'] )
+			? (string) $overrides['style_text']
+			: (string) ( $image['style_text'] ?? '' );
+		$form = new Form(
+			array(
+				'style_family' => $this->site_image_style_family_definition(),
+				'style_text'   => $this->site_image_style_text_definition(),
+			)
+		);
+		$fields = $form->build_list(
+			array(
+				'style_family' => $family,
+				'style_text'   => $text,
+			),
+			array( 'style_family', 'style_text' ),
+			self::IMAGE_KEY,
+			array(
+				'style_text' => array( 'field_header_buttons' => array( $this->propose_style_button() ) ),
+			)
+		);
+		foreach ( $fields as &$field ) {
+			$field['el_is_field'] = true;
+		}
+		unset( $field );
+		return $fields;
 	}
 	private function top_eyecatch_model( array $site_images ): array {
 		$value = isset( $site_images[ self::TOP_EYECATCH_KEY ] ) && is_scalar( $site_images[ self::TOP_EYECATCH_KEY ] )
@@ -2122,13 +2157,143 @@ final class Site_Setup extends Screen {
 			),
 		);
 	}
-	private function site_image_style_definition(): array {
+	private function resolve_posted_image_style( array $current, array $clean ): array {
+		$family = (string) ( $clean['style_family'] ?? '' );
+		$text   = (string) ( $clean['style_text'] ?? '' );
+		if ( Image_Catalog::STYLE_CUSTOM === $family && Status::capabilities()->is_pro() ) {
+			$current['style']         = Image_Catalog::STYLE_CUSTOM;
+			$current['style_text']    = $text;
+			$current['style_text_en'] = $this->translate_style_text(
+				$text,
+				(string) ( $current['style_text_en'] ?? '' ),
+				(string) ( $current['style_text'] ?? '' )
+			);
+			return $current;
+		}
+		$families = Image_Catalog::families();
+		if ( '' !== $family && isset( $families[ $family ] ) ) {
+			$current_style = (string) ( $current['style'] ?? '' );
+			if ( Image_Catalog::STYLE_CUSTOM === $current_style || Image_Catalog::family_of( $current_style ) !== $family ) {
+				$current['style'] = Image_Catalog::random_style( $family );
+			}
+		}
+		$current['style_text'] = $text;
+		return $current;
+	}
+	private function translate_style_text( string $text, string $current_en, string $current_text ): string {
+		$text = trim( $text );
+		if ( '' === $text ) {
+			return '';
+		}
+		if ( $text === $current_text && '' !== trim( $current_en ) ) {
+			return $current_en;
+		}
+		if ( 1 !== preg_match( '/[\x{3040}-\x{30FF}\x{4E00}-\x{9FFF}\x{FF00}-\x{FFEF}]/u', $text ) ) {
+			return $text;
+		}
+		try {
+			return ( new Style_Proposer() )->to_english( $text );
+		} catch ( \Throwable $e ) {
+			return $text;
+		}
+	}
+	private function propose_style_button(): array {
+		$available = ( new Style_Proposer() )->is_available();
+		$is_pro    = Status::capabilities()->is_pro();
+		$disabled  = ! $available || ! $is_pro;
+		if ( ! $is_pro ) {
+			$title = __( '画風の自由設定は PRO ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN );
+		} elseif ( ! $available ) {
+			$title = Style_Proposer::unavailable_message();
+		} else {
+			$title = __( "サイトの情報から画風の指定文を提案します。\n入力欄へ入るだけで、保存するまでデータベースに反映されません。", GACHIREAI_TEXT_DOMAIN );
+		}
+		return array(
+			'btn_name'     => esc_attr( self::GENERATE_STYLE_FIELD ),
+			'btn_value'    => '1',
+			'btn_label'    => esc_html__( 'AI提案', GACHIREAI_TEXT_DOMAIN ),
+			'btn_disabled' => $disabled,
+			'btn_title'    => esc_attr( $title ),
+			'btn_action'   => esc_attr( self::AJAX_ACTION_PROPOSE_STYLE ),
+			'button_icon'  => 'robot',
+		);
+	}
+	public function ajax_propose_style(): void {
+		$this->guard_ajax( self::NONCE_ACTION_SITE_IMAGES );
+		if ( ! Status::capabilities()->is_pro() ) {
+			$this->send_form_html(
+				fn(): string => $this->render_site_images_form(
+					array(),
+					array(),
+					array( 'style' => array( $this->message( 'error', esc_html__( '画風の自由設定は PRO ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN ) ) ) )
+				)
+			);
+			return;
+		}
+		try {
+			$context = $this->style_proposal_context( new Site_Profile() );
+			$text    = ( new Style_Proposer() )->propose( $context );
+		} catch ( \Throwable $e ) {
+			$this->send_form_html(
+				fn(): string => $this->render_site_images_form(
+					array(),
+					array(),
+					array( 'style' => array( $this->message( 'error', esc_html( $e->getMessage() ) ) ) )
+				)
+			);
+			return;
+		}
+		$this->send_form_html(
+			fn(): string => $this->render_site_images_form(
+				array(),
+				array(
+					'style_family' => Image_Catalog::STYLE_CUSTOM,
+					'style_text'   => $text,
+				),
+				array( 'style' => array( $this->message( 'success', esc_html__( '画風の候補を入力欄へ入れました。内容を確認して「保存」を押してください。', GACHIREAI_TEXT_DOMAIN ) ) ) )
+			)
+		);
+	}
+	private function style_proposal_context( Site_Profile $profile ): array {
+		$elements = $profile->get_site_elements();
+		$scope    = $profile->get_scope();
+		return array(
+			'site_name'   => (string) ( $elements['site_name'] ?? '' ),
+			'description' => (string) ( $elements['description'] ?? '' ),
+			'category'    => (string) ( $scope['category'] ?? '' ),
+			'products'    => (string) ( $scope['products'] ?? '' ),
+		);
+	}
+	private function site_image_style_family_definition(): array {
+		$is_pro  = Status::capabilities()->is_pro();
+		$options = Image_Catalog::families();
+		$options[ Image_Catalog::STYLE_CUSTOM ] = __( '自由設定（自由記述）', GACHIREAI_TEXT_DOMAIN );
+		$description = __( 'サイト全体でトーン＆マナーを統一します。系統を選ぶと、その系統内の画風が自動で決まります。', GACHIREAI_TEXT_DOMAIN );
+		if ( ! $is_pro ) {
+			$description .= ' ' . __( '「自由設定」は PRO ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN );
+		}
 		return array(
 			'label'       => __( 'サイト全体の画風', GACHIREAI_TEXT_DOMAIN ),
 			'type'        => 'radio',
-			'options'     => Image_Catalog::styles(),
-			'default'     => Image_Catalog::STYLE_CINEMATIC,
-			'description' => __( 'サイト全体でトーン＆マナーを統一します。', GACHIREAI_TEXT_DOMAIN ),
+			'options'     => $options,
+			'default'     => Image_Catalog::FAMILY_PHOTOREAL,
+			'disabled'    => $is_pro ? array() : array( Image_Catalog::STYLE_CUSTOM ),
+			'driver'      => 'style_family',
+			'description' => $description,
+		);
+	}
+	private function site_image_style_text_definition(): array {
+		$is_pro = Status::capabilities()->is_pro();
+		return array(
+			'label'          => __( '画風の自由記述', GACHIREAI_TEXT_DOMAIN ),
+			'type'           => 'textarea',
+			'rows'           => 3,
+			'row_depends'    => array(
+				'on'     => 'style_family',
+				'values' => array( Image_Catalog::STYLE_CUSTOM ),
+			),
+			'field_disabled' => ! $is_pro,
+			'description'    => __( "「自由設定」を選んだときに、画風を日本語で記述します（例: やわらかい水彩タッチ、明るい色合い、温かみのある光）。\n保存時に英語へ変換して画像生成に使います。文章生成AIの設定が必要です。", GACHIREAI_TEXT_DOMAIN ),
 		);
 	}
 	private function site_image_font_definition(): array {

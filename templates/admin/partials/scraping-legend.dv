@@ -1,0 +1,10 @@
+?$tag_descriptions
+<div class="gachireai-scraping-legend">
+	[$tag_descriptions]
+	<div class="gachireai-scraping-legend__item">
+		<span class="gachireai-scraping-tag gachireai-scraping-tag--{$tag_key}">{$tag_label}</span>
+		<span class="gachireai-scraping-legend__desc">{$tag_description}</span>
+	</div>
+	[/$tag_descriptions]
+</div>
+$tag_descriptions?

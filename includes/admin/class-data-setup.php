@@ -607,23 +607,31 @@ final class Data_Setup extends Screen {
 	private function review_sources_definitions(): array {
 		$sns_options   = Source_Settings::partner_sns_options();
 		$gachi_options = Source_Settings::direct_source_options();
+		$ec_ready  = class_exists( 'Get_Ec_Reviews_API' )
+			&& method_exists( 'Get_Ec_Reviews_API', 'has_usable_service' )
+			&& (bool) call_user_func( array( 'Get_Ec_Reviews_API', 'has_usable_service' ) );
+		$sns_ready = class_exists( 'Get_SNS_Reviews_API' )
+			&& method_exists( 'Get_SNS_Reviews_API', 'has_usable_service' )
+			&& (bool) call_user_func( array( 'Get_SNS_Reviews_API', 'has_usable_service' ) );
 		return array(
 			Source_Settings::PARTNER_EC_KEY    => array(
 				'label'       => '公式ECスクレイピング',
 				'type'        => 'checkbox',
 				'options'     => array( '1' => $this->partner_ec_label() ),
 				'normalize'   => array( Source_Settings::class, 'normalize_enabled' ),
-				'disabled'    => ! Status::capabilities()->can_collect_source( 'ec' ) ? array( '1' ) : array(),
-				'description' => __( "チェックすると、ASP設定で選んだメインEC の商品レビューを集めます。\nFREEライセンスではご利用いただけません。", GACHIREAI_TEXT_DOMAIN ),
+				'disabled'    => ( ! Status::capabilities()->can_collect_source( 'ec' ) || ! $ec_ready )
+					? array( '1' )
+					: array(),
+				'description' => __( "チェックすると、ASP設定で選んだメインEC の商品レビューを集めます。\n[EC]が付いているサービスを最低一つ有効にすることでチェックできるようになります。\nFREEライセンスではご利用いただけません。", GACHIREAI_TEXT_DOMAIN ),
 			),
 			Source_Settings::PARTNER_SNS_KEY   => array(
 				'label'       => 'SNSスクレイピング',
 				'type'        => 'checkbox_multi',
 				'options'     => $sns_options,
-				'disabled'    => ! Status::capabilities()->can_collect_source( 'x' )
+				'disabled'    => ( ! Status::capabilities()->can_collect_source( 'x' ) || ! $sns_ready )
 					? array_keys( $sns_options )
 					: array(),
-				'description' => __( "チェックした SNS を商品名で検索し、投稿をレビューとして集めます。\nFREEライセンスではご利用いただけません。", GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( "チェックした SNS を商品名で検索し、投稿をレビューとして集めます。\n[SNS]が付いているサービスを最低一つ有効にすることでチェックできるようになります。\nFREEライセンスではご利用いただけません。", GACHIREAI_TEXT_DOMAIN ),
 			),
 			Source_Settings::PARTNER_GACHI_KEY => array(
 				'label'       => 'その他',

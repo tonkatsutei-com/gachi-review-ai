@@ -1,6 +1,7 @@
 <div class="wrap gachireai-admin">
 	{% partials/page-head.dv %}
 	{% partials/tabs.dv %}
+	{% partials/scraping-legend.dv %}
 	?$sections
 	[$sections]
 	<section class="gachireai-section" id="gachireai-section-{$section_key}">

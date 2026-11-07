@@ -1262,6 +1262,7 @@ final class Api_Affiliate extends Screen
 	}
 	private function definitions_amazon(): array
 	{
+		$free_amzn_disabled = ! Amazon_Client::free_amzn_has_usable_service();
 		$definitions = array(
 			Amazon_Client::USE_FREE_AMZN_CREATORS => array(
 				'label'           => __('Free AMZN Creators API', GACHIREAI_TEXT_DOMAIN),
@@ -1269,7 +1270,8 @@ final class Api_Affiliate extends Screen
 				'options'         => array('1' => __('使用する', GACHIREAI_TEXT_DOMAIN)),
 				'exclusive'       => true,
 				'exclusive_group' => self::EXCLUSIVE_GROUP_AMAZON,
-				'description'     => __('Free AMZN Creators API で Amazon の商品を検索します。', GACHIREAI_TEXT_DOMAIN),
+				'disabled'        => $free_amzn_disabled ? array('1') : array(),
+				'description'     => __('Amazon公式APIをまだ使えない方はこちらをご利用ください。先にスクレイピング設定が必要です。[AMZN]が付いているサービスを最低一つ有効にすることでチェックできるようになります。', GACHIREAI_TEXT_DOMAIN),
 			),
 			'partner_tag' => array(
 				'label'       => __('パートナータグ（アソシエイトタグ）', GACHIREAI_TEXT_DOMAIN),
@@ -1284,7 +1286,7 @@ final class Api_Affiliate extends Screen
 			'options'         => array('1' => __('使用する', GACHIREAI_TEXT_DOMAIN)),
 			'exclusive'       => true,
 			'exclusive_group' => self::EXCLUSIVE_GROUP_AMAZON,
-			'description'     => __('Amazon Creators API（旧 PA-API 5.0 の後継）を使います。', GACHIREAI_TEXT_DOMAIN),
+			'description'     => __('Amazon公式API Creators API（旧 PA-API 5.0 の後継）を使います。', GACHIREAI_TEXT_DOMAIN),
 		);
 		$definitions[Amazon_Client::CLIENT_ID] = array(
 			'label'       => __('Credential ID', GACHIREAI_TEXT_DOMAIN),

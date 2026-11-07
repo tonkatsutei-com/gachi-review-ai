@@ -66,6 +66,7 @@ final class Admin {
 				Site_Setup::AJAX_ACTION_UPLOAD_FONT => 'ajax_upload_font',
 				Site_Setup::AJAX_ACTION_FONT_PREVIEW => 'ajax_font_preview',
 				Site_Setup::AJAX_ACTION_SAVE_SITE_IMAGES => 'ajax_save_site_images',
+				Site_Setup::AJAX_ACTION_PROPOSE_STYLE => 'ajax_propose_style',
 			) as $ajax_action => $method
 		) {
 			add_action( 'wp_ajax_' . $ajax_action, array( $site_setup, $method ) );

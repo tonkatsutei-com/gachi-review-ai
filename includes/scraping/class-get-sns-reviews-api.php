@@ -386,6 +386,10 @@ class Get_SNS_Reviews_API
         }
         return $usable;
     }
+    public static function has_usable_service(): bool
+    {
+        return [] !== self::usable_service_ids();
+    }
     public static function next_reset_at(int $reset_day): \DateTimeImmutable
     {
         return self::next_reset_after(current_datetime(), $reset_day);

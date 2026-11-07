@@ -321,6 +321,9 @@ class Get_Ec_Reviews_API {
         }
         return $usable;
     }
+    public static function has_usable_service(): bool {
+        return [] !== self::usable_service_ids();
+    }
     private static function next_reset_after(\DateTimeImmutable $from, int $reset_day): \DateTimeImmutable {
         $reset_day = max(1, min(31, $reset_day));
         $tz        = wp_timezone();
