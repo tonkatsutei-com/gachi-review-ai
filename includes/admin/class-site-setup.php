@@ -2220,24 +2220,32 @@ final class Site_Setup extends Screen {
 	}
 	public function ajax_propose_style(): void {
 		$this->guard_ajax( self::NONCE_ACTION_SITE_IMAGES );
+		$raw  = $this->posted_array( self::IMAGE_KEY );
+		$text = is_array( $raw ) && isset( $raw['style_text'] )
+			? sanitize_textarea_field( (string) $raw['style_text'] )
+			: '';
+		$keep = array(
+			'style_family' => Image_Catalog::STYLE_CUSTOM,
+			'style_text'   => $text,
+		);
 		if ( ! Status::capabilities()->is_pro() ) {
 			$this->send_form_html(
 				fn(): string => $this->render_site_images_form(
 					array(),
-					array(),
+					$keep,
 					array( 'style' => array( $this->message( 'error', esc_html__( '画風の自由設定は PRO ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN ) ) ) )
 				)
 			);
 			return;
 		}
 		try {
-			$context = $this->style_proposal_context( new Site_Profile() );
-			$text    = ( new Style_Proposer() )->propose( $context );
+			$context  = $this->style_proposal_context( new Site_Profile() );
+			$proposal = ( new Style_Proposer() )->propose( $context );
 		} catch ( \Throwable $e ) {
 			$this->send_form_html(
 				fn(): string => $this->render_site_images_form(
 					array(),
-					array(),
+					$keep,
 					array( 'style' => array( $this->message( 'error', esc_html( $e->getMessage() ) ) ) )
 				)
 			);
@@ -2248,7 +2256,7 @@ final class Site_Setup extends Screen {
 				array(),
 				array(
 					'style_family' => Image_Catalog::STYLE_CUSTOM,
-					'style_text'   => $text,
+					'style_text'   => $proposal,
 				),
 				array( 'style' => array( $this->message( 'success', esc_html__( '画風の候補を入力欄へ入れました。内容を確認して「保存」を押してください。', GACHIREAI_TEXT_DOMAIN ) ) ) )
 			)
