@@ -29,9 +29,9 @@ final class Style_Proposer {
 			)
 		);
 		$user = "【サイトの情報】\n" . self::context_text( $context ) . "\n\nこのサイトに合う画風の指定文を 1 つ、日本語で提案してください。";
-		$text = $this->ask( $system, $user, 0.8, 300 );
+		$text = $this->askLlm( $system, $user, 0.8, 300 );
 		if ( '' === $text ) {
-			throw new \RuntimeException( __( '画風の提案を取得できませんでした。もう一度お試しください。', GACHIREAI_TEXT_DOMAIN ) );
+			throw new \RuntimeException( __( 'LLM から空の応答が返されました。もう一度お試しください。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		return mb_substr( $text, 0, 300 );
 	}
@@ -51,14 +51,19 @@ final class Style_Proposer {
 				'Describe color, light, texture, mood, and composition. Do not include brand or product names.',
 			)
 		);
-		$en = $this->ask( $system, "Japanese art style:\n" . $text, 0.3, 200 );
+		try {
+			$en = $this->askLlm( $system, "Japanese art style:\n" . $text, 0.3, 200 );
+		} catch ( \Throwable $e ) {
+			throw new \RuntimeException( __( '画風の英語化に失敗しました: ', GACHIREAI_TEXT_DOMAIN ) . $e->getMessage() );
+		}
 		if ( '' === $en ) {
-			throw new \RuntimeException( __( '画風の英語化に失敗しました。', GACHIREAI_TEXT_DOMAIN ) );
+			throw new \RuntimeException( __( 'LLM から空の応答が返されました。もう一度お試しください。', GACHIREAI_TEXT_DOMAIN ) );
 		}
 		return mb_substr( $en, 0, 400 );
 	}
-	private function ask( string $system, string $user, float $temperature, int $max_tokens ): string {
-		$provider = Manager::provider( $this->llm );
+	private function askLlm( string $system, string $user, float $temperature, int $max_tokens ): string {
+		try {
+			$provider = Manager::provider( $this->llm );
 		$result   = Manager::generate(
 			$provider,
 			$system,
@@ -68,6 +73,9 @@ final class Style_Proposer {
 				'max_tokens'  => $max_tokens,
 			)
 		);
+		} catch ( \Throwable $e ) {
+			throw new \RuntimeException( __( 'LLM との通信に失敗しました: ', GACHIREAI_TEXT_DOMAIN ) . $e->getMessage() );
+		}
 		$text = trim( (string) ( $result['content'] ?? '' ) );
 		$text = (string) preg_replace( '/^```[a-zA-Z]*\s*(.*?)\s*```$/s', '$1', $text );
 		$text = trim( $text, " \t\n\r\0\x0B\"'“”‘’" );
