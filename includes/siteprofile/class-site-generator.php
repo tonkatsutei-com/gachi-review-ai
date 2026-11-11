@@ -43,6 +43,8 @@ final class Site_Generator {
 	private const SAMPLE_MAX_TOKENS = 2000;
 	private const THEME_MAX_TOKENS = 1200;
 	public const THEME_COUNT = 5;
+	private const KEYWORDS_MAX = 5;
+	private const KEYWORDS_MAX_TOKENS = 300;
 	private const KNOWLEDGE_LEVEL_LABELS = array(
 		'beginner'     => '初心者',
 		'intermediate' => '中級者',
@@ -422,6 +424,67 @@ final class Site_Generator {
 		}
 		$parts[] = '上のサイトの URL スラッグ（英語）を JSON で作成してください。';
 		return implode( "\n", $parts );
+	}
+	public function keywords_from_theme( string $theme ): string {
+		if ( '' === trim( $theme ) ) {
+			return '';
+		}
+		if ( ! $this->is_available() ) {
+			throw new \RuntimeException( self::unavailable_message() );
+		}
+		$provider = Manager::provider_for( $this->llm, 'site.keywords' );
+		$data     = Manager::generate_json(
+			$provider,
+			self::keywords_system_prompt(),
+			self::keywords_user_prompt( $theme ),
+			array(
+				'temperature' => 0.3,
+				'max_tokens'  => self::KEYWORDS_MAX_TOKENS,
+			)
+		);
+		$words = self::normalize_keywords( $data['keywords'] ?? array(), self::KEYWORDS_MAX );
+		return implode( ', ', $words );
+	}
+	private static function keywords_system_prompt(): string {
+		return implode(
+			"\n",
+			array(
+				'あなたは日本語のアフィリエイトサイトの編集者です。',
+				'与えられたサイトのコンセプトから、EC（ネット通販）で商品を検索するための「検索キーワード」を取り出します。',
+				'必ず次のキーだけを持つ JSON オブジェクトを返してください: keywords',
+				'keywords は文字列の配列にしてください（1〜5 件程度）。',
+				'コンセプトに含まれる商品名・カテゴリー名の名詞だけを取り出してください。',
+				'「サイト」「口コミ」「分析」「レビュー」「比較」「まとめ」「初心者向け」など、サイトの目的や性質を表す語は入れないでください。',
+				'複数の商品を扱う場合は、それぞれ 1 語ずつに分けてください（例: 「釣り具・ルアーの口コミ分析サイト」→ ["釣り具", "ルアー"]）。',
+				'各キーワードは 20 文字以内の日本語にしてください。記号・説明文・番号は付けないでください。',
+			)
+		);
+	}
+	private static function keywords_user_prompt( string $theme ): string {
+		return '【コンセプト】' . trim( $theme ) . "\n\n" . '上のコンセプトから、商品を検索するためのキーワードを JSON で返してください。';
+	}
+	private static function normalize_keywords( $value, int $max ): array {
+		if ( is_string( $value ) ) {
+			$value = preg_split( '/[,\x{3001}\x{30FB}\n]+/u', $value );
+		}
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+		$words = array();
+		foreach ( $value as $word ) {
+			if ( ! is_scalar( $word ) ) {
+				continue;
+			}
+			$text = trim( trim( (string) $word ), "\"' \t\n\r\0\x0B" );
+			$text = mb_substr( $text, 0, 100 );
+			if ( '' !== $text ) {
+				$words[] = $text;
+			}
+			if ( count( $words ) >= $max ) {
+				break;
+			}
+		}
+		return array_values( array_unique( $words ) );
 	}
 	private static function normalize_candidates( $value, int $max ): array {
 		if ( is_string( $value ) ) {

@@ -150,7 +150,7 @@ final class Site_Builder {
 	}
 	private function build_in_site( string $theme, string $ec, string $type, string $article, array $profile_parts, int $user_id, ?callable $progress = null ): array {
 		$this->notify( $progress, __( '設定を保存中...', GACHIREAI_TEXT_DOMAIN ), 4 );
-		$scope = $this->prepare_scope( $ec, $type, $theme );
+		$scope = $this->prepare_scope( $ec, $type, $theme, (string) ( $profile_parts['keywords'] ?? '' ) );
 		$settings = new Settings();
 		$ec_group              = (array) $settings->get( 'ec', array() );
 		$ec_group['ec']        = $ec;
@@ -162,8 +162,8 @@ final class Site_Builder {
 		$settings->set(
 			'ai_review',
 			array(
-				Ai_Review::KEY_MODE           => Ai_Review::MODE_ONLY,
-				Ai_Review::KEY_REQUIRED_COUNT => Ai_Review::DEFAULT_COUNT,
+				Ai_Review::KEY_MODE  => Ai_Review::MODE_ONLY,
+				Ai_Review::KEY_COUNT => Ai_Review::DEFAULT_COUNT,
 			)
 		);
 		$profile = new Site_Profile();
@@ -317,13 +317,15 @@ final class Site_Builder {
 			'profile'     => sanitize_textarea_field( $this->first_candidate( (array) ( $candidates['profile'] ?? array() ) ) ),
 		);
 		$elements['writing_sample'] = sanitize_textarea_field( $generator->generate_writing_sample( $persona, $elements ) );
+		$keywords = 'niche' === $type ? $generator->keywords_from_theme( $theme ) : '';
 		return array(
 			'my_persona'     => $persona,
 			'target_persona' => $target,
 			'site_elements'  => $elements,
+			'keywords'       => $keywords,
 		);
 	}
-	private function prepare_scope( string $ec, string $type, string $theme ): array {
+	private function prepare_scope( string $ec, string $type, string $theme, string $keywords = '' ): array {
 		$scope = array( 'site_type' => $type );
 		if ( 'general' === $type ) {
 			return $scope;
@@ -332,14 +334,18 @@ final class Site_Builder {
 		$nodes   = $this->genre_nodes( $catalog, $ec );
 		if ( array() === $nodes ) {
 			if ( 'niche' === $type && '' !== $theme ) {
-				$scope['products'] = $theme;
+				$scope['products'] = '' !== $keywords ? $keywords : $theme;
 			}
 			return $scope;
 		}
 		$node = $this->pick_genre( $nodes, $theme );
 		$scope['category'] = Genre_Catalog::format_entry( (string) ( $node['genre_id'] ?? '' ), (string) ( $node['name'] ?? '' ) );
 		if ( 'niche' === $type ) {
-			$scope['products'] = '' !== $theme ? $theme : (string) ( $node['name'] ?? '' );
+			if ( '' !== $keywords ) {
+				$scope['products'] = $keywords;
+			} else {
+				$scope['products'] = '' !== $theme ? $theme : (string) ( $node['name'] ?? '' );
+			}
 		}
 		return $scope;
 	}

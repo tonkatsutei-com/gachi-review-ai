@@ -256,7 +256,7 @@ class Get_Ec_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::scraperapi_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::scraperapi_html_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -411,7 +411,7 @@ class Get_Ec_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::zenrows_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::zenrows_html_error($status, $body), $body)],
             self::zenrows_failure_flags($status, $body)
         );
     }
@@ -637,7 +637,7 @@ class Get_Ec_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::webscrapingapi_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::webscrapingapi_html_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -717,7 +717,7 @@ class Get_Ec_Reviews_API_Client {
         $body   = (string) wp_remote_retrieve_body($response);
         if ($status !== 200) {
             return array_merge(
-                ['ok' => false, 'html' => '', 'message' => self::contextdev_error($status, $body)],
+                ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::contextdev_error($status, $body), $body)],
                 self::failure_flags($status)
             );
         }
@@ -951,7 +951,7 @@ class Get_Ec_Reviews_API_Client {
             429      => __('リクエストが多すぎます（HTTP 429）。時間をおいて再度お試しください。', 'get-ec-reviews-api'),
             default  => self::unexpected_response($status, $body)['message'],
         };
-        return array_merge(['ok' => false, 'records' => [], 'message' => $message], self::failure_flags($status));
+        return array_merge(['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append($message, $body)], self::failure_flags($status));
     }
     private static function apify_failure_message(string $run_state, string $status_message): string {
         if ($status_message === '') {
@@ -1082,7 +1082,7 @@ class Get_Ec_Reviews_API_Client {
             429     => __('リクエストが多すぎます（HTTP 429）。時間をおいて再度お試しください。', 'get-ec-reviews-api'),
             default => self::unexpected_response($status, $body)['message'],
         };
-        return array_merge(['ok' => false, 'records' => [], 'message' => $message], self::failure_flags($status));
+        return array_merge(['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append($message, $body)], self::failure_flags($status));
     }
     private static function test_bright_data(string $api_key): array {
         $response = wp_remote_post(
@@ -1141,7 +1141,7 @@ class Get_Ec_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::brightdata_unlocker_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::brightdata_unlocker_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }

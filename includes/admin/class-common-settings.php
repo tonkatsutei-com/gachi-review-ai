@@ -300,7 +300,7 @@ final class Common_Settings extends Screen {
 				break;
 			case 'error':
 				$type = 'error';
-				$text = __( '保存しましたが、接続テストに失敗しました。', GACHIREAI_TEXT_DOMAIN );
+				$text = __( '接続テストに失敗したため、保存しませんでした。', GACHIREAI_TEXT_DOMAIN );
 				break;
 			default:
 				$type = 'success';
@@ -335,64 +335,91 @@ final class Common_Settings extends Screen {
 		$note  = '';
 		switch ( $section ) {
 			case 'rakuten':
-				$values = $this->save_simple( $store, 'rakuten', $this->definitions_rakuten() );
+				$values = $this->prepare_simple( $store, 'rakuten', $this->definitions_rakuten() );
 				$result = ( new Rakuten_Client() )->test( $values );
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'rakuten', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'rakuten', $values );
+					$this->record_verified( $store, 'rakuten', $result );
+				}
 				break;
 			case 'amazon':
-				$values = $this->save_amazon( $store );
+				$values = $this->prepare_amazon( $store );
 				$result = ( new Amazon_Client() )->test( $values );
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'amazon', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'amazon', $values );
+					$this->record_verified( $store, 'amazon', $result );
+				}
 				break;
 			case 'yahoo':
-				$values = $this->save_simple( $store, 'yahoo', $this->definitions_yahoo() );
+				$values = $this->prepare_simple( $store, 'yahoo', $this->definitions_yahoo() );
 				$posted = isset( $_POST['yahoo'] ) && is_array( $_POST['yahoo'] ) ? (array) wp_unslash( $_POST['yahoo'] ) : array();
 				$result = ( new Yahoo_Client() )->test( $values, $posted );
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'yahoo', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'yahoo', $values );
+					$this->record_verified( $store, 'yahoo', $result );
+				}
 				break;
 			case 'llm':
-				$values = $this->save_llm( $store );
-				$result = ( new Api_Affiliate() )->test_llm( $values );
-				$type   = $this->apply_test( $result );
-				$this->record_verified_state( $store, 'llm', 'error' !== $type && '' !== (string) ( $values['api_key'] ?? '' ) );
+				$prepared = $this->prepare_llm( $store );
+				$result   = ( new Api_Affiliate() )->test_llm( $prepared['test'] );
+				$type     = $this->apply_test( $result );
+				if ( 'error' !== $type && null !== $prepared['save'] ) {
+					$store->set( 'llm', $prepared['save'] );
+					$this->record_verified_state( $store, 'llm', '' !== (string) ( $prepared['test']['api_key'] ?? '' ) );
+				}
 				break;
 			case 'jev':
-				$values = $this->save_simple( $store, 'jev', $this->definitions_jev() );
+				$values = $this->prepare_simple( $store, 'jev', $this->definitions_jev() );
 				$result = ( new Jev_Client( (string) ( $values['api_key'] ?? '' ), (string) ( $values['model'] ?? '' ) ) )->test();
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'jev', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'jev', $values );
+					$this->record_verified( $store, 'jev', $result );
+				}
 				break;
 			case 'image':
-				$values = $this->save_image( $store );
-				$type   = $this->test_image( $values );
-				$this->record_verified_state( $store, 'image', 'error' !== $type && '' !== $store->image_api_key( $values ) );
+				$prepared = $this->prepare_image( $store );
+				$type     = $this->test_image( $prepared['test'] );
+				if ( 'error' !== $type ) {
+					$store->set( 'image', $prepared['save'] );
+					$this->record_verified_state( $store, 'image', '' !== $store->image_api_key( $prepared['test'] ) );
+				}
 				break;
 			case 'youtube':
-				$values = $this->save_simple( $store, 'youtube', $this->definitions_youtube() );
+				$values = $this->prepare_simple( $store, 'youtube', $this->definitions_youtube() );
 				$result = ( new YouTube_Client() )->test( (string) ( $values['api_key'] ?? '' ) );
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'youtube', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'youtube', $values );
+					$this->record_verified( $store, 'youtube', $result );
+				}
 				break;
 			case 'mastodon':
-				$values = $this->save_simple( $store, 'mastodon', $this->definitions_mastodon() );
+				$values = $this->prepare_simple( $store, 'mastodon', $this->definitions_mastodon() );
 				$result = ( new Mastodon_Client() )->test(
 					(string) ( $values['instance'] ?? '' ),
 					(string) ( $values['token'] ?? '' )
 				);
 				$type   = $this->apply_test( $result );
-				$this->record_verified( $store, 'mastodon', $result );
+				if ( 'error' !== $type ) {
+					$store->set( 'mastodon', $values );
+					$this->record_verified( $store, 'mastodon', $result );
+				}
 				break;
 			default:
 				if ( str_starts_with( $section, 'scraping_' ) ) {
-					$service = substr( $section, strlen( 'scraping_' ) );
-					$values  = $this->save_scraping( $store, $service );
-					$test    = Connection_Tester::test( $service, (string) ( $values['api_key'] ?? '' ) );
-					$type    = ! empty( $test['ok'] ) ? 'success' : 'error';
-					$note    = (string) ( $test['message'] ?? '' );
-					$this->save_scraping_status( $store, $service, ! empty( $test['ok'] ), $note );
+					$service  = substr( $section, strlen( 'scraping_' ) );
+					$prepared = $this->prepare_scraping( $store, $service );
+					$test     = Connection_Tester::test( $service, (string) ( $prepared['test']['api_key'] ?? '' ) );
+					$type     = ! empty( $test['ok'] ) ? 'success' : 'error';
+					$note     = (string) ( $test['message'] ?? '' );
+					if ( 'error' !== $type && null !== $prepared['save'] ) {
+						$store->set( 'scraping.services', $prepared['save'] );
+						$this->save_scraping_status( $store, $service, true, $note );
+					}
 				}
 				break;
 		}
@@ -424,31 +451,29 @@ final class Common_Settings extends Screen {
 		);
 		$store->set( 'scraping.services', $rows );
 	}
-	private function save_simple( Store $store, string $group, array $definitions ): array {
+	private function prepare_simple( Store $store, string $group, array $definitions ): array {
 		$posted  = isset( $_POST[ $group ] ) && is_array( $_POST[ $group ] ) ? (array) wp_unslash( $_POST[ $group ] ) : array();
 		$current = (array) $store->get( $group, array() );
 		$clean   = ( new Form( $definitions ) )->sanitize( $posted, $current );
-		$store->set( $group, array_replace( $current, $clean ) );
-		return $clean;
+		return array_replace( $current, $clean );
 	}
-	private function save_amazon( Store $store ): array {
+	private function prepare_amazon( Store $store ): array {
 		$posted  = isset( $_POST['amazon'] ) && is_array( $_POST['amazon'] ) ? (array) wp_unslash( $_POST['amazon'] ) : array();
 		$current = (array) $store->get( 'amazon', array() );
 		$clean   = ( new Form( $this->definitions_amazon() ) )->sanitize( $posted, $current );
 		if ( isset( $clean['backend'] ) ) {
 			if ( Amazon_Client::BACKEND_CREATORS === (string) $clean['backend'] ) {
-				$clean['use_creators_api'] = '1';
-				unset( $clean['use_free_amzn_creators'] );
+				$clean['use_creators_api']       = '1';
+				$clean['use_free_amzn_creators'] = '';
 			} else {
 				$clean['use_free_amzn_creators'] = '1';
-				unset( $clean['use_creators_api'] );
+				$clean['use_creators_api']       = '';
 			}
 			unset( $clean['backend'] );
 		}
-		$store->set( 'amazon', array_replace( $current, $clean ) );
-		return $clean;
+		return array_replace( $current, $clean );
 	}
-	private function save_llm( Store $store ): array {
+	private function prepare_llm( Store $store ): array {
 		$posted = isset( $_POST['llm'] ) && is_array( $_POST['llm'] ) ? (array) wp_unslash( $_POST['llm'] ) : array();
 		$entries  = (array) $store->get( 'llm.entries', array() );
 		$active   = (string) $store->get( 'llm.active', '' );
@@ -461,32 +486,33 @@ final class Common_Settings extends Screen {
 		$clean = ( new Form( $this->definitions_llm() ) )->sanitize( $posted, $current );
 		$provider = (string) ( $clean['provider'] ?? '' );
 		if ( '' === $provider ) {
-			return $clean;
+			return array( 'save' => null, 'test' => $clean );
 		}
 		$entries[ $provider ] = array(
 			'provider' => $provider,
 			'api_key'  => Settings::trim_secret( (string) ( $clean['api_key'] ?? '' ) ),
 			'model'    => Settings::trim_secret( (string) ( $clean['model'] ?? '' ) ),
 		);
-		$store->set(
-			'llm',
-			array(
+		return array(
+			'save' => array(
 				'active'  => $provider,
 				'entries' => $entries,
-			)
+			),
+			'test' => $entries[ $provider ],
 		);
-		return $entries[ $provider ];
 	}
-	private function save_image( Store $store ): array {
+	private function prepare_image( Store $store ): array {
 		$posted  = isset( $_POST['image'] ) && is_array( $_POST['image'] ) ? (array) wp_unslash( $_POST['image'] ) : array();
 		$current = $store->image();
 		$clean   = ( new Form( $this->definitions_image() ) )->sanitize( $posted, $current );
-		$store->set( 'image', array_replace( (array) $store->get( 'image', array() ), $clean ) );
-		return array_replace( $current, $clean );
+		return array(
+			'save' => array_replace( (array) $store->get( 'image', array() ), $clean ),
+			'test' => array_replace( $current, $clean ),
+		);
 	}
-	private function save_scraping( Store $store, string $service ): array {
+	private function prepare_scraping( Store $store, string $service ): array {
 		if ( ! Service_Catalog::exists( $service ) ) {
-			return array( 'api_key' => '' );
+			return array( 'save' => null, 'test' => array( 'api_key' => '' ) );
 		}
 		$posted  = isset( $_POST['api_key'] ) ? (string) wp_unslash( $_POST['api_key'] ) : '';
 		$rows    = (array) $store->get( 'scraping.services', array() );
@@ -496,8 +522,7 @@ final class Common_Settings extends Screen {
 			$current
 		);
 		$rows[ $service ] = array_replace( (array) ( $rows[ $service ] ?? array() ), $clean );
-		$store->set( 'scraping.services', $rows );
-		return $clean;
+		return array( 'save' => $rows, 'test' => $clean );
 	}
 	private function test_image( array $values ): string {
 		try {
@@ -528,15 +553,15 @@ final class Common_Settings extends Screen {
 		if ( '' !== $message ) {
 			$this->store_test_message( $message );
 		}
-		wp_safe_redirect(
-			Common_Tabs::url(
-				$tab,
-				array(
-					self::SAVED_ARG  => $section,
-					self::TESTED_ARG => $tested,
-				)
+		$url = Common_Tabs::url(
+			$tab,
+			array(
+				self::SAVED_ARG  => $section,
+				self::TESTED_ARG => $tested,
 			)
 		);
+		$url .= '#gachireai-section-common-' . rawurlencode( $section );
+		wp_safe_redirect( $url );
 		exit;
 	}
 	private function tab_for_section( string $section ): string {

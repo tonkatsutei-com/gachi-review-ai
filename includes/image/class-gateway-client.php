@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Image;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 use Tonkatsutei\Gachi_Review_AI\License\Client as License_Client;
 use Tonkatsutei\Gachi_Review_AI\License\Store as License_Store;
 final class Gateway_Client {
@@ -83,12 +84,17 @@ final class Gateway_Client {
 			$message = is_array( $data ) && isset( $data['message'] ) && is_scalar( $data['message'] )
 				? trim( (string) $data['message'] )
 				: '';
-			$text = '' !== $message
-				? $message
-				: sprintf(
+			$text = Api_Error::append(
+				sprintf(
 					__( '画像ゲートウェイがエラーを返しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
 					$code
-				);
+				),
+				'' !== $message ? $message : $raw
+			);
+			$quota = Validator::quota_hint( $raw );
+			if ( '' !== $quota ) {
+				$text .= "\n" . $quota;
+			}
 			throw new Provider_Exception( self::scrub( $text, $license_id, $api_key ), $code );
 		}
 		if ( ! is_array( $data ) ) {

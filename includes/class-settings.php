@@ -275,6 +275,7 @@ class Settings {
 			'style'        => $value( $image, 'style', 'cinematic' ),
 			'style_text'   => $value( $image, 'style_text', '' ),
 			'style_text_en' => $value( $image, 'style_text_en', '' ),
+			'style_text_src' => $value( $image, 'style_text_src', '' ),
 			'text_overlay' => $value( $image, 'text_overlay', '1' ),
 			'text_side'    => $value( $image, 'text_side', 'left' ),
 			'prompt_llm'   => $value( $image, 'prompt_llm', '1' ),

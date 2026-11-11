@@ -693,6 +693,28 @@
 		}
 		submit_form( form, action, button );
 	} );
+	document.addEventListener( 'change', function ( event ) {
+		var input = event.target;
+		if ( ! input || 'image[style_family]' !== input.name ) {
+			return;
+		}
+		if ( event.isTrusted === false ) {
+			return;
+		}
+		if ( 'custom' === input.value || busy ) {
+			return;
+		}
+		var form = input.form || ( input.closest ? input.closest( 'form' ) : null );
+		if ( ! form ) {
+			return;
+		}
+		var save   = form.querySelector( '[data-gachireai-save-images]' );
+		var action = save ? save.getAttribute( 'data-gachireai-ajax' ) : '';
+		if ( ! save || ! action || ! config.ajaxUrl ) {
+			return;
+		}
+		submit_form( form, action, save );
+	} );
 	function render_image_preview( box, url ) {
 		var holder = box.querySelector( '[data-gachireai-image-preview-box]' );
 		if ( ! holder ) {
@@ -1322,5 +1344,41 @@
 						: ( config.i18n && config.i18n.requestFailed ? config.i18n.requestFailed : '' )
 				);
 			} );
+	} );
+	function hide_loading() {
+		var loading = document.querySelector( '.gachireai-loading' );
+		if ( loading ) {
+			loading.classList.add( 'gachireai-loading--hidden' );
+		}
+	}
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', hide_loading );
+	} else {
+		hide_loading();
+	}
+	document.addEventListener( 'click', function ( event ) {
+		if ( event.defaultPrevented ) {
+			return;
+		}
+		if ( event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ) {
+			return;
+		}
+		var link = event.target && event.target.closest ? event.target.closest( '.gachireai-tabs .nav-tab' ) : null;
+		if ( ! link || link.classList.contains( 'nav-tab-active' ) ) {
+			return;
+		}
+		var href = link.getAttribute( 'href' );
+		if ( ! href || '#' === href.charAt( 0 ) ) {
+			return;
+		}
+		var loading = document.querySelector( '.gachireai-loading' );
+		if ( ! loading ) {
+			return;
+		}
+		event.preventDefault();
+		loading.classList.remove( 'gachireai-loading--hidden' );
+		window.setTimeout( function () {
+			window.location.href = href;
+		}, 300 );
 	} );
 }() );

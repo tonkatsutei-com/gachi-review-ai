@@ -65,12 +65,14 @@ abstract class Screen {
 		}
 		return $compared > 0;
 	}
-	final protected function apply_common_switch( string $key ): void {
+	final protected function apply_common_switch( string $key ): bool {
 		if ( ! is_multisite() || ! in_array( $key, Settings::COMMON_GROUPS, true ) ) {
-			return;
+			return false;
 		}
 		$common = isset( $_POST['common'] ) && is_array( $_POST['common'] ) ? (array) wp_unslash( $_POST['common'] ) : array();
-		( new Settings() )->set_common_override( $key, empty( $common[ $key ] ) );
+		$settings = new Settings();
+		$settings->set_common_override( $key, empty( $common[ $key ] ) );
+		return $settings->uses_common( $key );
 	}
 	final public static function plugin_badge(): array {
 		return array(

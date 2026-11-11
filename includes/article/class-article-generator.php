@@ -176,8 +176,9 @@ final class Article_Generator {
 						Event_Logger::TYPE_GENERATE,
 						Event_Logger::LEVEL_INFO,
 						sprintf(
-							__( 'AI によるレビューを %d 件生成しました（引用型）。', GACHIREAI_TEXT_DOMAIN ),
-							count( $ai_reviews )
+							__( 'AI によるレビューを %1$d 件生成しました（%2$s）。', GACHIREAI_TEXT_DOMAIN ),
+							count( $ai_reviews ),
+							self::article_type_label( $this->article_type() )
 						),
 						array(
 							'ai_reviews' => count( $ai_reviews ),
@@ -188,6 +189,15 @@ final class Article_Generator {
 			}
 			if ( array() === $reviews ) {
 				throw $this->empty_reviews_exception( $force, $matched, $excluded, $used );
+			}
+			if ( Ai_Review::is_off() && count( $reviews ) < Ai_Review::count() ) {
+				throw new No_Usable_Reviews_Exception(
+					sprintf(
+						__( '使用できるレビューが %1$d 件で、最低掲載数（%2$d 件）に満たないため、記事を生成しませんでした。レビュー取得設定の検索先や商品名の表記を見直すか、「AI生成」で不足分を補充する設定に変更してください。', GACHIREAI_TEXT_DOMAIN ),
+						count( $reviews ),
+						Ai_Review::count()
+					)
+				);
 			}
 			$collected = is_array( $collected ) ? $collected : array();
 			Generate_Progress::update( $user_id, __( '記事を生成中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_GENERATE, Generate_Progress::STEP_TOTAL );
@@ -476,7 +486,7 @@ final class Article_Generator {
 		return $force ? new \RuntimeException( $message ) : new Reuse_Interval_Exception( $message );
 	}
 	private function ai_reviews( Site_Profile $profile, array $product, int $existing ): array {
-		$shortfall = Ai_Review::required_count() - $existing;
+		$shortfall = Ai_Review::count() - $existing;
 		if ( $shortfall <= 0 ) {
 			return array();
 		}
@@ -485,9 +495,7 @@ final class Article_Generator {
 	private function pick_reviews( string $product_name, bool $force = false ): array {
 		$needles = $this->name_needles( $product_name );
 		$limit   = self::REVIEW_LIMITS[ $this->article_type() ] ?? self::REVIEW_LIMITS['summary'];
-		if ( ! Ai_Review::is_off() ) {
-			$limit = max( $limit, Ai_Review::required_count() );
-		}
+		$limit = max( $limit, Ai_Review::count() );
 		$used_keys = $force ? array() : $this->used_recent_sources()['source_keys'];
 		$picked    = array();
 		$matched   = false;
@@ -1321,6 +1329,15 @@ final class Article_Generator {
 			return $type;
 		}
 		return (string) ( $allowed[0] ?? 'summary' );
+	}
+	private static function article_type_label( string $type ): string {
+		$labels = array(
+			'summary'    => __( '総評型', GACHIREAI_TEXT_DOMAIN ),
+			'quote'      => __( '引用型', GACHIREAI_TEXT_DOMAIN ),
+			'experience' => __( '体験談型', GACHIREAI_TEXT_DOMAIN ),
+			'dialogue'   => __( '対話型', GACHIREAI_TEXT_DOMAIN ),
+		);
+		return (string) ( $labels[ $type ] ?? $type );
 	}
 	private function dialogue_context(): string {
 		$article  = (array) $this->settings->get( 'article', array() );

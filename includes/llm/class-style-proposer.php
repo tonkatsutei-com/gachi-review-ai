@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Llm;
+use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Style_Proposer {
 	private array $llm;
@@ -14,22 +15,28 @@ final class Style_Proposer {
 	public static function unavailable_message(): string {
 		return __( '文章生成AI（LLM）の API キーが未設定のため使えません。「AI設定」タブで LLM を先に設定してください。', GACHIREAI_TEXT_DOMAIN );
 	}
-	public function propose( array $context = array() ): string {
+	public function propose(): string {
 		if ( ! $this->is_available() ) {
 			throw new \RuntimeException( self::unavailable_message() );
 		}
+		$families  = Image_Catalog::families();
+		$family    = array() !== $families ? (string) array_rand( $families ) : '';
+		$direction = '' !== $family && isset( $families[ $family ] )
+			? (string) $families[ $family ]
+			: '描き方のタッチ';
 		$system = implode(
 			"\n",
 			array(
-				'あなたは日本語の商品レビューサイトのアートディレクターです。',
-				'サイトの情報から、サイト全体の画像の「画風（アートスタイル）」の指定文を 1 つ提案します。',
-				'日本語で 120 文字以内。色・光・質感・雰囲気・構図を具体的に書いてください。',
+				'あなたは画像生成AI向けの「画風」を決めるディレクターです。',
+				'サイト全体の画像で使う画風（どんなタッチ・技法・画材で描くか）の指定文を 1 つ提案します。',
+				'画風は「描き方のタッチ」です。被写体・構図・シーン（何を描くか）は書かないでください。',
+				'日本語で 60 文字以内。技法・画材・タッチを具体的に（例：水彩、油彩、フラットベクター、3Dレンダリング、アニメセル画、ペン画 など）。',
 				'商品名・ブランド名・型番・商標は含めないでください。',
 				'指定文だけを出力し、前置き・説明・引用符・見出し・箇条書きは付けないでください。',
 			)
 		);
-		$user = "【サイトの情報】\n" . self::context_text( $context ) . "\n\nこのサイトに合う画風の指定文を 1 つ、日本語で提案してください。";
-		$text = $this->askLlm( $system, $user, 0.8, 300 );
+		$user = '今回は「' . $direction . '」系統の画風（タッチ）で、指定文を日本語で 1 つ提案してください。';
+		$text = $this->askLlm( $system, $user, 1.0, 300 );
 		if ( '' === $text ) {
 			throw new \RuntimeException( __( 'LLM から空の応答が返されました。もう一度お試しください。', GACHIREAI_TEXT_DOMAIN ) );
 		}
@@ -48,7 +55,7 @@ final class Style_Proposer {
 			array(
 				'You translate a Japanese art-style description into ONE concise English image-style prompt.',
 				'Output only the English prompt (max 40 words). No quotes, no labels, no explanation.',
-				'Describe color, light, texture, mood, and composition. Do not include brand or product names.',
+				'Focus on the drawing touch, technique, and medium (e.g. watercolor, oil paint, flat vector, cel-shaded). Do not add subjects, composition, or scene details. Do not include brand or product names.',
 			)
 		);
 		try {
@@ -81,23 +88,5 @@ final class Style_Proposer {
 		$text = trim( $text, " \t\n\r\0\x0B\"'“”‘’" );
 		$text = trim( (string) preg_replace( '/\s+/u', ' ', $text ) );
 		return $text;
-	}
-	private static function context_text( array $context ): string {
-		$map   = array(
-			'site_name'   => 'サイト名',
-			'description' => 'サイト説明',
-			'category'    => 'カテゴリー',
-			'products'    => 'キーワード',
-		);
-		$lines = array();
-		foreach ( $map as $key => $label ) {
-			$value = $context[ $key ] ?? '';
-			if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
-				$lines[] = $label . ': ' . trim( (string) $value );
-			}
-		}
-		return array() !== $lines
-			? implode( "\n", $lines )
-			: '（サイト情報が未入力です。一般的な商品レビューサイトに合う画風を提案してください）';
 	}
 }

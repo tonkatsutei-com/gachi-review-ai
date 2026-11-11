@@ -305,9 +305,12 @@ class Free_Amzn_Creators_API_Client {
             return array_merge([
                 'ok'      => false,
                 'records' => [],
-                'message' => sprintf(
-                    __('API キーが無効です（HTTP %d）。', GACHIREAI_TEXT_DOMAIN),
-                    $status
+                'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(
+                    sprintf(
+                        __('API キーが無効です（HTTP %d）。', GACHIREAI_TEXT_DOMAIN),
+                        $status
+                    ),
+                    $body
                 ),
             ], self::failure_flags($status));
         }
@@ -315,7 +318,10 @@ class Free_Amzn_Creators_API_Client {
             return array_merge([
                 'ok'      => false,
                 'records' => [],
-                'message' => __('クレジットまたはレートの上限に達しました（HTTP 429）。時間をおいて再度お試しください。', GACHIREAI_TEXT_DOMAIN),
+                'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(
+                    __('クレジットまたはレートの上限に達しました（HTTP 429）。時間をおいて再度お試しください。', GACHIREAI_TEXT_DOMAIN),
+                    $body
+                ),
             ], self::failure_flags($status));
         }
         return array_merge([
@@ -344,7 +350,7 @@ class Free_Amzn_Creators_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::scraperapi_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::scraperapi_html_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -564,7 +570,7 @@ class Free_Amzn_Creators_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::zenrows_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::zenrows_html_error($status, $body), $body)],
             self::zenrows_failure_flags($status, $body)
         );
     }
@@ -855,7 +861,7 @@ class Free_Amzn_Creators_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::webscrapingapi_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::webscrapingapi_html_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -935,7 +941,7 @@ class Free_Amzn_Creators_API_Client {
         $body   = (string) wp_remote_retrieve_body($response);
         if ($status !== 200) {
             return array_merge(
-                ['ok' => false, 'html' => '', 'message' => self::contextdev_error($status, $body)],
+                ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::contextdev_error($status, $body), $body)],
                 self::failure_flags($status)
             );
         }
@@ -1213,7 +1219,7 @@ class Free_Amzn_Creators_API_Client {
             429      => __('リクエストが多すぎます（HTTP 429）。時間をおいて再度お試しください。', GACHIREAI_TEXT_DOMAIN),
             default  => self::unexpected_response($status, $body)['message'],
         };
-        return array_merge(['ok' => false, 'records' => [], 'message' => $message], self::failure_flags($status));
+        return array_merge(['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append($message, $body)], self::failure_flags($status));
     }
     private static function apify_failure_message(string $run_state, string $status_message): string {
         if ($status_message === '') {
@@ -1311,7 +1317,7 @@ class Free_Amzn_Creators_API_Client {
             429     => __('リクエストが多すぎます（HTTP 429）。時間をおいて再度お試しください。', GACHIREAI_TEXT_DOMAIN),
             default => self::unexpected_response($status, $body)['message'],
         };
-        return array_merge(['ok' => false, 'records' => [], 'message' => $message], self::failure_flags($status));
+        return array_merge(['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append($message, $body)], self::failure_flags($status));
     }
     private static function test_bright_data(string $api_key): array {
         $response = wp_remote_post(

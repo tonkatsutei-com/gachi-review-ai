@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Affiliate;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Event_Logger;
 use Tonkatsutei\Gachi_Review_AI\Settings;
@@ -751,21 +752,37 @@ final class Amazon_Client {
 				return null;
 			}
 			$code = (int) wp_remote_retrieve_response_code( $response );
+			$raw  = (string) wp_remote_retrieve_body( $response );
 			if ( in_array( $code, $retryable, true ) ) {
 				if ( $attempt < $max ) {
 					$retry_after = (string) wp_remote_retrieve_header( $response, 'retry-after' );
 					$delay       = is_numeric( $retry_after ) ? max( 1, (int) $retry_after ) : $attempt;
-					self::log_warning( sprintf( __( 'Amazon Creators API: 一時的な失敗（HTTP %d）。再試行します。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+					self::log_warning(
+						Api_Error::append(
+							sprintf( __( 'Amazon Creators API: 一時的な失敗（HTTP %d）。再試行します。', GACHIREAI_TEXT_DOMAIN ), $code ),
+							$raw
+						)
+					);
 					sleep( $delay );
 					self::$last_request_at = microtime( true );
 					continue;
 				}
-				self::log_warning( sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+				self::log_warning(
+					Api_Error::append(
+						sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ),
+						$raw
+					)
+				);
 				return null;
 			}
-			$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+			$decoded = json_decode( $raw, true );
 			if ( 200 !== $code || ! is_array( $decoded ) ) {
-				self::log_warning( sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ) );
+				self::log_warning(
+					Api_Error::append(
+						sprintf( __( 'Amazon Creators API: 失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ), $code ),
+						$raw
+					)
+				);
 				return null;
 			}
 			return $decoded;

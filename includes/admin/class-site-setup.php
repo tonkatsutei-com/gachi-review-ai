@@ -2161,13 +2161,18 @@ final class Site_Setup extends Screen {
 		$family = (string) ( $clean['style_family'] ?? '' );
 		$text   = (string) ( $clean['style_text'] ?? '' );
 		if ( Image_Catalog::STYLE_CUSTOM === $family && Status::capabilities()->is_pro() ) {
+			$previous_en  = (string) ( $current['style_text_en'] ?? '' );
+			$previous_src = (string) ( $current['style_text_src'] ?? '' );
+			$reuse = ( '' !== trim( $previous_en ) && $text === $previous_src );
 			$current['style']         = Image_Catalog::STYLE_CUSTOM;
 			$current['style_text']    = $text;
 			$current['style_text_en'] = $this->translate_style_text(
 				$text,
-				(string) ( $current['style_text_en'] ?? '' ),
-				(string) ( $current['style_text'] ?? '' )
+				$reuse ? $previous_en : '',
+				$reuse ? $text : ''
 			);
+			$has_japanese = 1 === preg_match( '/[\x{3040}-\x{30FF}\x{4E00}-\x{9FFF}\x{FF00}-\x{FFEF}]/u', $text );
+			$current['style_text_src'] = ( ! $has_japanese || $current['style_text_en'] !== $text ) ? $text : '';
 			return $current;
 		}
 		$families = Image_Catalog::families();
@@ -2206,7 +2211,7 @@ final class Site_Setup extends Screen {
 		} elseif ( ! $available ) {
 			$title = Style_Proposer::unavailable_message();
 		} else {
-			$title = __( "サイトの情報から画風の指定文を提案します。\n入力欄へ入るだけで、保存するまでデータベースに反映されません。", GACHIREAI_TEXT_DOMAIN );
+			$title = __( "画風（タッチ・技法・画材）の指定文を、毎回異なる系統から提案します。\n入力欄へ入るだけで、保存するまでデータベースに反映されません。", GACHIREAI_TEXT_DOMAIN );
 		}
 		return array(
 			'btn_name'     => esc_attr( self::GENERATE_STYLE_FIELD ),
@@ -2239,8 +2244,7 @@ final class Site_Setup extends Screen {
 			return;
 		}
 		try {
-			$context  = $this->style_proposal_context( new Site_Profile() );
-			$proposal = ( new Style_Proposer() )->propose( $context );
+			$proposal = ( new Style_Proposer() )->propose();
 		} catch ( \Throwable $e ) {
 			$this->send_form_html(
 				fn(): string => $this->render_site_images_form(
@@ -2260,16 +2264,6 @@ final class Site_Setup extends Screen {
 				),
 				array( 'style' => array( $this->message( 'success', esc_html__( '画風の候補を入力欄へ入れました。内容を確認して「保存」を押してください。', GACHIREAI_TEXT_DOMAIN ) ) ) )
 			)
-		);
-	}
-	private function style_proposal_context( Site_Profile $profile ): array {
-		$elements = $profile->get_site_elements();
-		$scope    = $profile->get_scope();
-		return array(
-			'site_name'   => (string) ( $elements['site_name'] ?? '' ),
-			'description' => (string) ( $elements['description'] ?? '' ),
-			'category'    => (string) ( $scope['category'] ?? '' ),
-			'products'    => (string) ( $scope['products'] ?? '' ),
 		);
 	}
 	private function site_image_style_family_definition(): array {

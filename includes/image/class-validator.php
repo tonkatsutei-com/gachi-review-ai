@@ -59,7 +59,17 @@ final class Validator {
 		}
 		return '';
 	}
+	public static function quota_hint( string $raw ): string {
+		if ( false === stripos( $raw, 'daily free allocation' ) && false === stripos( $raw, 'neurons' ) ) {
+			return '';
+		}
+		return __( "Cloudflare Workers AI の無料枠（1日 10,000 ニューロン）を使い切りました。\n① 翌日（UTC 0時／日本時間 9:00 頃）のリセットを待つ\n② Cloudflare の Workers Paid プランへアップグレードする\n③ 別の画像生成AI（Google AI Studio / OpenAI）へ切り替える", GACHIREAI_TEXT_DOMAIN );
+	}
 	public static function http_hint( int $status, string $raw = '' ): string {
+		$quota = self::quota_hint( $raw );
+		if ( '' !== $quota ) {
+			return $quota;
+		}
 		if ( 401 === $status || 403 === $status ) {
 			return __( 'API キー・トークンの権限を確認してください。', GACHIREAI_TEXT_DOMAIN );
 		}

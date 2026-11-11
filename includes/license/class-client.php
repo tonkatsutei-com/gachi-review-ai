@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\License;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -109,9 +110,12 @@ final class Client {
 		$raw  = (string) wp_remote_retrieve_body( $response );
 		if ( 200 !== $code ) {
 			throw new \RuntimeException(
-				sprintf(
-					__( 'ライセンスサーバーがエラーを返しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
-					$code
+				Api_Error::append(
+					sprintf(
+						__( 'ライセンスサーバーがエラーを返しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
+						$code
+					),
+					$raw
 				)
 			);
 		}

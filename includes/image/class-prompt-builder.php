@@ -25,7 +25,7 @@ final class Prompt_Builder {
 		if ( '' === $prompt ) {
 			$prompt = $fallback;
 		}
-		return $this->finish( $prompt, false );
+		return $this->finish( $prompt );
 	}
 	public function eyecatch_prompt( string $title, array $product = array() ): string {
 		$image    = $this->settings->image();
@@ -70,8 +70,7 @@ final class Prompt_Builder {
 	}
 	public function safe_favicon_prompt(): string {
 		return $this->finish(
-			'A simple flat vector app icon with bold geometric shapes, high contrast, centered symbol, solid background, no text, no letters, no logo, no watermark.',
-			false
+			'A simple flat vector app icon with bold geometric shapes, high contrast, centered symbol, solid background, no text, no letters, no logo, no watermark.'
 		);
 	}
 	public function top_eyecatch_prompt(): string {
@@ -263,16 +262,22 @@ final class Prompt_Builder {
 	private function effective_style_prompt( array $image ): string {
 		$style = (string) ( $image['style'] ?? '' );
 		if ( Image_Catalog::STYLE_CUSTOM === $style ) {
-			$en = trim( (string) ( $image['style_text_en'] ?? '' ) );
-			return '' !== $en ? $en : trim( (string) ( $image['style_text'] ?? '' ) );
+			$en   = trim( (string) ( $image['style_text_en'] ?? '' ) );
+			$text = trim( (string) ( $image['style_text'] ?? '' ) );
+			if ( '' === $en && '' === $text ) {
+				throw new \RuntimeException(
+					__( '画風が「自由設定」になっていますが、自由記述が空です。「サイト設定 > サイト画像 > サイト全体の画風」で画風を入力するか、系統を選んで保存してから生成してください。', GACHIREAI_TEXT_DOMAIN )
+				);
+			}
+			return '' !== $en ? $en : $text;
 		}
 		return Image_Catalog::style_prompt( $style );
 	}
-	private function finish( string $prompt, bool $with_style = true ): string {
+	private function finish( string $prompt ): string {
 		$image = $this->settings->image();
 		$style = $this->effective_style_prompt( $image );
 		$text  = trim( $prompt );
-		if ( $with_style && ! str_contains( $text, $style ) ) {
+		if ( ! str_contains( $text, $style ) ) {
 			$text .= ' ' . $style;
 		}
 		$text .= ' ' . self::NEGATIVE;

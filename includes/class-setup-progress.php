@@ -244,7 +244,7 @@ final class Setup_Progress {
 	}
 	private function review_sections(): array {
 		$sections = array(
-			$this->section( __( 'AIによるレビュー生成', GACHIREAI_TEXT_DOMAIN ), self::MARK_SINGLE, true, '', 1, 'ai_review' ),
+			$this->section( __( '掲載数とAIによるレビュー生成', GACHIREAI_TEXT_DOMAIN ), self::MARK_SINGLE, true, '', 1, 'ai_review' ),
 			$this->section( __( '表示と保持', GACHIREAI_TEXT_DOMAIN ), '', true, '', 1, Source_Settings::GROUP ),
 		);
 		$review_note = Status::is_free()

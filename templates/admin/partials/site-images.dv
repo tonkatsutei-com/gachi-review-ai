@@ -60,7 +60,7 @@
 		</div>
 		<footer class="gachireai-section__footer">
 			<div class="gachireai-section__actions">
-				<button type="submit" class="button button-primary" ?$site_images_submit_action data-gachireai-ajax="{$site_images_submit_action}"$site_images_submit_action?>{$site_images_submit_label}</button>
+				<button type="submit" class="button button-primary" data-gachireai-save-images="1" ?$site_images_submit_action data-gachireai-ajax="{$site_images_submit_action}"$site_images_submit_action?>{$site_images_submit_label}</button>
 				?$site_images_note
 				<span class="gachireai-section__note">{$site_images_note}</span>
 				$site_images_note?

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Affiliate;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 final class Rakuten_Client {
 	public const ENDPOINT = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 	public const GENRE_ENDPOINT = 'https://openapi.rakuten.co.jp/ichibagt/api/IchibaGenre/Search/20260701';
@@ -318,9 +319,12 @@ final class Rakuten_Client {
 		if ( 404 === $code || ( is_array( $data ) && 'not_found' === (string) ( $data['error'] ?? '' ) ) ) {
 			return $this->search_result(
 				self::STATUS_NO_HIT,
-				sprintf(
-					__( '楽天市場で該当する商品が見つかりませんでした（HTTP %d / not_found）。', GACHIREAI_TEXT_DOMAIN ),
-					$code
+				Api_Error::append(
+					sprintf(
+						__( '楽天市場で該当する商品が見つかりませんでした（HTTP %d / not_found）。', GACHIREAI_TEXT_DOMAIN ),
+						$code
+					),
+					$body
 				)
 			);
 		}
@@ -410,9 +414,12 @@ final class Rakuten_Client {
 		if ( 404 === $code || ( is_array( $data ) && 'not_found' === (string) ( $data['error'] ?? '' ) ) ) {
 			return $this->genre_result(
 				self::STATUS_NO_HIT,
-				sprintf(
-					__( '楽天市場でジャンルが見つかりませんでした（HTTP %d / not_found）。', GACHIREAI_TEXT_DOMAIN ),
-					$code
+				Api_Error::append(
+					sprintf(
+						__( '楽天市場でジャンルが見つかりませんでした（HTTP %d / not_found）。', GACHIREAI_TEXT_DOMAIN ),
+						$code
+					),
+					$body
 				)
 			);
 		}

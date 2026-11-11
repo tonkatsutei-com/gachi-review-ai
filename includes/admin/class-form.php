@@ -86,6 +86,7 @@ final class Form {
 		$type       = (string) ( $definition['type'] ?? 'text' );
 		$is_select   = 'select' === $type;
 		$is_radio    = 'radio' === $type;
+		$is_choices_plain = ! empty( $definition['plain_choices'] );
 		$is_checkbox = 'checkbox' === $type;
 		$is_checkbox_multi = 'checkbox_multi' === $type;
 		$is_category = 'category' === $type;
@@ -134,6 +135,8 @@ final class Form {
 			'is_textarea'    => $is_area,
 			'is_select'      => $is_select,
 			'is_radio'       => $is_radio,
+			'is_choices_plain' => $is_choices_plain,
+			'choice_class'   => $is_choices_plain ? 'gachireai-radio-plain' : 'gachireai-choice',
 			'is_checkbox'    => $is_checkbox,
 			'is_checkbox_multi' => $is_checkbox_multi,
 			'is_choice'      => $is_choice,
@@ -235,7 +238,8 @@ final class Form {
 				(array) ( $definition['options'] ?? array() ),
 				(array) ( $definition['disabled'] ?? array() ),
 				(array) ( $definition['option_ec'] ?? array() ),
-				$driver
+				$driver,
+				! empty( $definition['options_html'] )
 			);
 			return $field;
 		}
@@ -323,14 +327,16 @@ final class Form {
 		$id = trim( (string) preg_replace( '/[^A-Za-z0-9_-]+/', '-', $name ), '-' );
 		return 'gachireai-' . ( '' !== $id ? $id : 'datalist' );
 	}
-	private function radio_choices( string $value, array $options, array $disabled = array(), array $option_ec = array(), string $driver = '' ): array {
+	private function radio_choices( string $value, array $options, array $disabled = array(), array $option_ec = array(), string $driver = '', bool $options_html = false ): array {
 		$disabled = array_map( 'strval', $disabled );
 		$choices  = array();
 		foreach ( $options as $option_value => $option_label ) {
 			$is_disabled = in_array( (string) $option_value, $disabled, true );
 			$choices[] = array(
 				'opt_value'    => esc_attr( (string) $option_value ),
-				'opt_label'    => esc_html( (string) $option_label ),
+				'opt_label'    => $options_html
+					? wp_kses( (string) $option_label, array( 'strong' => array( 'class' => true ) ) )
+					: esc_html( (string) $option_label ),
 				'opt_checked'  => ! $is_disabled && (string) $option_value === $value,
 				'opt_disabled' => $is_disabled,
 				'opt_driver'   => esc_attr( $driver ),

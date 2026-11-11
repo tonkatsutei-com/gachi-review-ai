@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Scraping;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 final class Connection_Tester {
 	private const TIMEOUT = 20;
 	private const ZENROWS_ENDPOINT            = 'https://api.zenrows.com/v1/';
@@ -53,7 +54,7 @@ final class Connection_Tester {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 401 === $status || 403 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		if ( 400 === $status || ( $status >= 200 && $status < 300 ) ) {
 			return self::valid();
@@ -73,7 +74,7 @@ final class Connection_Tester {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 401 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		if ( ( 404 === $status && str_contains( $body, 'Collector not found' ) ) || ( $status >= 200 && $status < 300 ) ) {
 			return self::valid();
@@ -93,7 +94,7 @@ final class Connection_Tester {
 			return self::valid();
 		}
 		if ( 401 === $status || 403 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		return self::unexpected( $status, $body );
 	}
@@ -104,11 +105,12 @@ final class Connection_Tester {
 			return self::fail( $error );
 		}
 		$status = (int) wp_remote_retrieve_response_code( $response );
+		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 200 === $status ) {
 			return self::valid();
 		}
 		if ( 401 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		return self::unexpected( $status, (string) wp_remote_retrieve_body( $response ) );
 	}
@@ -122,7 +124,7 @@ final class Connection_Tester {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 401 === $status || 403 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		if ( 400 === $status || ( $status >= 200 && $status < 300 ) ) {
 			return self::valid();
@@ -145,7 +147,7 @@ final class Connection_Tester {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 401 === $status || 403 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		if ( 400 === $status || ( $status >= 200 && $status < 300 ) ) {
 			return self::valid();
@@ -171,7 +173,7 @@ final class Connection_Tester {
 			return self::valid();
 		}
 		if ( 401 === $status || 403 === $status || 491 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		return self::unexpected( $status, $body );
 	}
@@ -185,7 +187,7 @@ final class Connection_Tester {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$body   = (string) wp_remote_retrieve_body( $response );
 		if ( 401 === $status || 403 === $status ) {
-			return self::invalid( $status );
+			return self::invalid( $status, $body );
 		}
 		if ( 200 !== $status ) {
 			return self::unexpected( $status, $body );
@@ -196,7 +198,10 @@ final class Connection_Tester {
 		}
 		return array(
 			'ok'      => false,
-			'message' => __( 'APIキーが有効ではありません（アカウントが有効化されていません）。', GACHIREAI_TEXT_DOMAIN ),
+			'message' => Api_Error::append(
+				__( 'APIキーが有効ではありません（アカウントが有効化されていません）。', GACHIREAI_TEXT_DOMAIN ),
+				$body
+			),
 		);
 	}
 	private static function get( string $url, array $headers = array() ) {
@@ -235,12 +240,15 @@ final class Connection_Tester {
 			'message' => self::valid_message(),
 		);
 	}
-	private static function invalid( int $status ): array {
+	private static function invalid( int $status, string $body = '' ): array {
 		return array(
 			'ok'      => false,
-			'message' => sprintf(
-				__( 'APIキーが無効です（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
-				$status
+			'message' => Api_Error::append(
+				sprintf(
+					__( 'APIキーが無効です（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
+					$status
+				),
+				$body
 			),
 		);
 	}
@@ -253,18 +261,13 @@ final class Connection_Tester {
 	private static function unexpected( int $status, string $body ): array {
 		return array(
 			'ok'      => false,
-			'message' => sprintf(
-				__( '想定外の応答です（HTTP %1$d %2$s）。', GACHIREAI_TEXT_DOMAIN ),
-				$status,
-				self::excerpt( $body )
+			'message' => Api_Error::append(
+				sprintf(
+					__( '想定外の応答です（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
+					$status
+				),
+				$body
 			),
 		);
-	}
-	private static function excerpt( string $body ): string {
-		$body = trim( preg_replace( '/\s+/', ' ', $body ) ?? '' );
-		if ( '' === $body ) {
-			return '';
-		}
-		return mb_substr( $body, 0, 200 );
 	}
 }

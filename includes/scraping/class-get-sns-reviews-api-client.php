@@ -408,7 +408,7 @@ class Get_SNS_Reviews_API_Client {
             429      => __('リクエストが多すぎます（HTTP 429）。時間をおいて再度お試しください。', 'get-sns-reviews-api'),
             default  => self::unexpected_response($status, $body)['message'],
         };
-        return array_merge(['ok' => false, 'records' => [], 'message' => $message], self::failure_flags($status));
+        return array_merge(['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append($message, $body)], self::failure_flags($status));
     }
     private static function apify_failure_message(string $run_state, string $status_message): string {
         if ($status_message === '') {
@@ -523,7 +523,7 @@ class Get_SNS_Reviews_API_Client {
         $body   = (string) wp_remote_retrieve_body($response);
         if ($status !== 200) {
             return array_merge(
-                ['ok' => false, 'records' => [], 'message' => self::ensembledata_error($status, $body)],
+                ['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::ensembledata_error($status, $body), $body)],
                 self::ensembledata_failure_flags($status)
             );
         }
@@ -669,7 +669,7 @@ class Get_SNS_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::webscrapingapi_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::webscrapingapi_html_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -726,7 +726,7 @@ class Get_SNS_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::scrapedo_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::scrapedo_html_error($status, $body), $body)],
             self::scrapedo_failure_flags($status)
         );
     }
@@ -802,7 +802,7 @@ class Get_SNS_Reviews_API_Client {
             return self::brightdata_dataset_snapshot($api_key, $body);
         }
         return array_merge(
-            ['ok' => false, 'records' => [], 'message' => self::brightdata_dataset_error($status, $body)],
+            ['ok' => false, 'records' => [], 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::brightdata_dataset_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }
@@ -847,13 +847,14 @@ class Get_SNS_Reviews_API_Client {
         if ($error !== null) {
             return ['ok' => false, 'records' => [], 'message' => $error, 'quota_exhausted' => false, 'fallback' => self::$last_transport_fallback];
         }
-        $status = (int) wp_remote_retrieve_response_code($items_response);
+        $status     = (int) wp_remote_retrieve_response_code($items_response);
+        $items_body = (string) wp_remote_retrieve_body($items_response);
         if ($status < 200 || $status >= 300) {
             return array_merge(
                 [
                     'ok'      => false,
                     'records' => [],
-                    'message' => self::brightdata_dataset_error($status, (string) wp_remote_retrieve_body($items_response)),
+                    'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::brightdata_dataset_error($status, $items_body), $items_body),
                 ],
                 self::failure_flags($status)
             );
@@ -924,7 +925,7 @@ class Get_SNS_Reviews_API_Client {
             return ['ok' => true, 'html' => $body, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::zenrows_html_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::zenrows_html_error($status, $body), $body)],
             self::zenrows_failure_flags($status, $body)
         );
     }
@@ -1007,7 +1008,7 @@ class Get_SNS_Reviews_API_Client {
             return ['ok' => true, 'html' => $html, 'message' => '', 'quota_exhausted' => false, 'fallback' => false];
         }
         return array_merge(
-            ['ok' => false, 'html' => '', 'message' => self::brightdata_unlocker_error($status, $body)],
+            ['ok' => false, 'html' => '', 'message' => \Tonkatsutei\Gachi_Review_AI\Api_Error::append(self::brightdata_unlocker_error($status, $body), $body)],
             self::failure_flags($status)
         );
     }

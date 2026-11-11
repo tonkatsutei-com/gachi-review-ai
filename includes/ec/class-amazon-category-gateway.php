@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Ec;
+use Tonkatsutei\Gachi_Review_AI\Api_Error;
 use Tonkatsutei\Gachi_Review_AI\License\Client as License_Client;
 use Tonkatsutei\Gachi_Review_AI\License\Store as License_Store;
 final class Amazon_Category_Gateway {
@@ -105,16 +106,18 @@ final class Amazon_Category_Gateway {
 			);
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
-		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		$raw  = (string) wp_remote_retrieve_body( $response );
+		$data = json_decode( $raw, true );
 		if ( 200 !== $code ) {
 			$message = is_array( $data ) && isset( $data['message'] ) && is_scalar( $data['message'] ) ? trim( (string) $data['message'] ) : '';
 			throw new \RuntimeException(
-				'' !== $message
-					? $message
-					: sprintf(
+				Api_Error::append(
+					sprintf(
 						__( 'Amazon カテゴリーの取得に失敗しました（HTTP %d）。', GACHIREAI_TEXT_DOMAIN ),
 						$code
-					)
+					),
+					'' !== $message ? $message : $raw
+				)
 			);
 		}
 		if ( ! is_array( $data ) ) {

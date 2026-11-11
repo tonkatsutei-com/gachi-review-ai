@@ -5,6 +5,7 @@ use Tonkatsutei\Gachi_Review_AI\Affiliate\Amazon_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Rakuten_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Yahoo_Client;
+use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
@@ -55,6 +56,7 @@ final class Api_Affiliate extends Screen
 	private const TEST_PROMPT = '「OK」とだけ返してください。';
 	private const TEST_MAX_TOKENS = 1024;
 	private const TEST_TIMEOUT = 30;
+	private bool $use_common = false;
 	public function render(): void
 	{
 		if (! current_user_can('manage_options')) {
@@ -102,7 +104,7 @@ final class Api_Affiliate extends Screen
 	private function save_and_test(string $key): array
 	{
 		delete_transient( self::TEST_TRANSIENT_PREFIX . get_current_user_id() );
-		$this->apply_common_switch($key);
+		$this->use_common = $this->apply_common_switch($key);
 		if (self::KEY_LLM === $key) {
 			return $this->save_llm_form();
 		}
@@ -117,18 +119,23 @@ final class Api_Affiliate extends Screen
 		}
 		$settings = new Settings();
 		$posted   = $this->posted($key);
-		$current  = (array) $settings->get($key, array());
+		$current = $this->use_common
+			? (array) ( new Common_Store() )->get($key, array())
+			: (array) $settings->get($key, array());
 		if (self::KEY_YAHOO === $key) {
 			unset($current['affiliate_id']);
 		}
-		$clean = $this->sanitize($key, $posted, $current);
+		$source = $this->use_common ? $current : $posted;
+		$clean  = $this->sanitize($key, $source, $current);
 		if (self::KEY_AMAZON === $key) {
 			$clean = $this->normalize_amazon_backend($clean);
 		}
-		$test  = $this->test($key, $clean, $posted);
+		$test  = $this->test($key, $clean, $source);
 		$saved = ('error' !== $test['type']) && $this->is_implemented($key);
 		if ($saved) {
-			$settings->set($key, array_merge($current, $clean));
+			if (! $this->use_common) {
+				$settings->set($key, array_merge($current, $clean));
+			}
 			if (! empty($test['connected'])) {
 				Connection_Status::mark_verified($key, $settings);
 			} else {
@@ -212,14 +219,16 @@ final class Api_Affiliate extends Screen
 		$settings  = new Settings();
 		$posted    = $this->posted(self::KEY_LLM);
 		$providers = Model_Catalog::providers();
-		$entries   = $settings->llm_entries();
+		$common_store = $this->use_common ? new Common_Store() : null;
+		$entries      = $common_store ? $common_store->llm_entries() : $settings->llm_entries();
 		$current = array();
 		foreach (array_keys($providers) as $provider) {
 			$entry = (array) ($entries[$provider] ?? array());
 			$current['api_key_' . $provider] = (string) ($entry['api_key'] ?? '');
 			$current['model_' . $provider]   = (string) ($entry['model'] ?? '');
 		}
-		$clean = $this->form(self::KEY_LLM)->sanitize($posted, $current);
+		$source = $this->use_common ? $current : $posted;
+		$clean  = $this->form(self::KEY_LLM)->sanitize($source, $current);
 		foreach (array_keys($providers) as $provider) {
 			$entry = array(
 				'provider' => (string) $provider,
@@ -233,7 +242,7 @@ final class Api_Affiliate extends Screen
 			}
 		}
 		$checked = $this->sanitize_llm_active($posted);
-		$active  = (string) $settings->get('llm.active', '');
+		$active  = (string) ( $common_store ? $common_store->get('llm.active', '') : $settings->get('llm.active', '') );
 		if ('' !== $checked && isset($entries[$checked])) {
 			$active = $checked;
 		}
@@ -265,7 +274,9 @@ final class Api_Affiliate extends Screen
 				'saved' => false,
 			);
 		}
-		$settings->save_llm($entries, $active);
+		if (! $this->use_common) {
+			$settings->save_llm($entries, $active);
+		}
 		$connected = 'error' !== (string) $test['type'] && '' !== (string) ($target['api_key'] ?? '');
 		$this->record_verified(self::KEY_LLM, $connected, $settings);
 		return array(
@@ -277,7 +288,9 @@ final class Api_Affiliate extends Screen
 	{
 		$settings = new Settings();
 		$posted   = $this->posted(self::KEY_JEV);
-		$clean    = $this->form(self::KEY_JEV)->sanitize($posted, $settings->jev());
+		$current = $this->use_common ? ( new Common_Store() )->jev() : $settings->jev();
+		$source = $this->use_common ? $current : $posted;
+		$clean  = $this->form(self::KEY_JEV)->sanitize($source, $current);
 		$entry = array(
 			'api_key' => (string) ($clean['api_key'] ?? ''),
 			'model'   => (string) ($clean['model'] ?? ''),
@@ -289,10 +302,12 @@ final class Api_Affiliate extends Screen
 				'saved' => false,
 			);
 		}
-		if ('' === $entry['api_key'] && '' === $entry['model']) {
-			$settings->remove(self::KEY_JEV);
-		} else {
-			$settings->set(self::KEY_JEV, $entry);
+		if (! $this->use_common) {
+			if ('' === $entry['api_key'] && '' === $entry['model']) {
+				$settings->remove(self::KEY_JEV);
+			} else {
+				$settings->set(self::KEY_JEV, $entry);
+			}
 		}
 		$this->record_verified(self::KEY_JEV, !empty($test['connected']), $settings);
 		return array(
@@ -303,10 +318,11 @@ final class Api_Affiliate extends Screen
 	private function save_image_form(): array
 	{
 		$settings  = new Settings();
-		$current   = $settings->image();
 		$posted    = $this->posted(self::KEY_IMAGE);
 		$form      = $this->form(self::KEY_IMAGE);
-		$clean     = $form->sanitize($posted, $current);
+		$current = $this->use_common ? ( new Common_Store() )->image() : $settings->image();
+		$source    = $this->use_common ? $current : $posted;
+		$clean     = $form->sanitize($source, $current);
 		$candidate = array_merge($current, $clean);
 		if ('1' === (string) ($candidate['reuse_llm'] ?? '') && '' === trim((string) ($posted['api_key'] ?? ''))) {
 			$candidate['api_key'] = '';
@@ -344,7 +360,9 @@ final class Api_Affiliate extends Screen
 				'saved' => false,
 			);
 		}
-		$settings->set(self::KEY_IMAGE, $candidate);
+		if (! $this->use_common) {
+			$settings->set(self::KEY_IMAGE, $candidate);
+		}
 		$this->record_verified(self::KEY_IMAGE, 'error' !== (string) $test['type'] && '' !== $key, $settings);
 		return array(
 			'test'  => $test,

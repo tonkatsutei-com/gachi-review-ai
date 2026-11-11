@@ -30,7 +30,6 @@ final class Data_Setup extends Screen {
 	private const PARTNER_GROUP = Source_Settings::PARTNER_GROUP;
 	private const REWRITE_GROUP = Ec_Review_Use::GROUP;
 	private const AI_REVIEW_GROUP = 'ai_review';
-	private const AI_REVIEW_DRIVER = 'ai_review_mode';
 	private const ACTION = 'save_data_setup';
 	private const NONCE_ACTION = 'gachireai_save_data_setup';
 	private const ACTION_FIELD = 'gachireai_action';
@@ -166,10 +165,15 @@ final class Data_Setup extends Screen {
 		return array( 'subreddits' => implode( ', ', $result['subreddits'] ) );
 	}
 	private function save(): bool {
-		$settings = new Settings();
 		$section = isset( $_POST[ self::SAVE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::SAVE_FIELD ] ) ) : '';
 		foreach ( $this->groups() as $group ) {
 			$this->apply_common_switch( $group );
+		}
+		$settings = new Settings();
+		foreach ( $this->groups() as $group ) {
+			if ( $settings->uses_common( $group ) ) {
+				continue;
+			}
 			$posted  = $this->posted( $group );
 			$current = (array) $settings->get( $group, array() );
 			$clean   = $this->sanitize( $posted, $current, $group );
@@ -328,12 +332,12 @@ final class Data_Setup extends Screen {
 		return array(
 			$this->section(
 				self::AI_REVIEW_GROUP,
-				__( 'AIによるレビュー生成', GACHIREAI_TEXT_DOMAIN ),
-				__( 'AIによるレビュー生成を設定します。', GACHIREAI_TEXT_DOMAIN ),
+				__( '掲載数とAIによるレビュー生成', GACHIREAI_TEXT_DOMAIN ),
+				__( '記事に掲載するレビューの最低数と、AIによるレビュー生成を設定します。', GACHIREAI_TEXT_DOMAIN ),
 				array(
 					array(
 						'block_title'    => '',
-						'fields'         => $this->form( self::AI_REVIEW_GROUP )->build_list( $ai_review, array( 'mode', 'min_count', 'required_count' ), self::AI_REVIEW_GROUP ),
+						'fields'         => $this->form( self::AI_REVIEW_GROUP )->build_list( $ai_review, array( 'count', 'mode' ), self::AI_REVIEW_GROUP ),
 						'block_buttons'  => array(),
 						'block_messages' => array(),
 					),
@@ -685,43 +689,28 @@ final class Data_Setup extends Screen {
 	}
 	private function ai_review_definitions(): array {
 		return array(
-			Ai_Review::KEY_MODE           => array(
-				'label'       => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'select',
-				'options'     => Ai_Review::mode_options(),
-				'default'     => Ai_Review::default_mode(),
-				'disabled'    => Status::capabilities()->is_free()
+			Ai_Review::KEY_COUNT => array(
+				'label'       => __( '最低掲載数', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'number',
+				'min'         => Ai_Review::MIN_COUNT,
+				'max'         => Ai_Review::max_count(),
+				'default'     => (string) Ai_Review::DEFAULT_COUNT,
+				'description' => __( "記事に掲載するレビューの最低数です。\n使用できるレビュー（素材として使えるレビュー）がこの数に満たない場合の挙動を、下の「AI生成」で選びます。\n使用できるレビューがこの数より多くある場合は、この数で打ち切らず潤沢に使用します。", GACHIREAI_TEXT_DOMAIN ),
+			),
+			Ai_Review::KEY_MODE  => array(
+				'label'        => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
+				'type'         => 'radio',
+				'options'      => Ai_Review::mode_options(),
+				'options_html' => true,
+				'plain_choices' => true,
+				'default'      => Ai_Review::default_mode(),
+				'disabled'     => Status::capabilities()->is_free()
 					? array( Ai_Review::MODE_OFF, Ai_Review::MODE_FILL )
 					: array(),
-				'warning'     => Status::capabilities()->is_free()
+				'warning'      => Status::capabilities()->is_free()
 					? __( 'FREEライセンスでは「AI生成のみ」のみ選択できます。', GACHIREAI_TEXT_DOMAIN )
 					: '',
-				'driver'      => self::AI_REVIEW_DRIVER,
-				'description' => __( 'AIによるレビュー生成の条件を選びます。', GACHIREAI_TEXT_DOMAIN ),
-			),
-			Ai_Review::KEY_MIN_COUNT      => array(
-				'label'       => __( '最低数', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'number',
-				'min'         => Ai_Review::MIN_COUNT,
-				'max'         => Ai_Review::MAX_COUNT,
-				'default'     => (string) Ai_Review::DEFAULT_MIN_COUNT,
-				'row_depends' => array(
-					'on'     => self::AI_REVIEW_DRIVER,
-					'values' => array( Ai_Review::MODE_OFF ),
-				),
-				'description' => __( "収集したレビューがこの数に満たないときは記事を作成しません。\n記事生成のためにAIが採用する元となるレビューの最低数です。\n※AIは収集したすべてのレビューを使用する訳ではありません。\n記事への掲載数ではありません。", GACHIREAI_TEXT_DOMAIN ),
-			),
-			Ai_Review::KEY_REQUIRED_COUNT => array(
-				'label'       => __( '必要数', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'number',
-				'min'         => Ai_Review::MIN_COUNT,
-				'max'         => Ai_Review::max_required_count(),
-				'default'     => (string) Ai_Review::DEFAULT_COUNT,
-				'row_depends' => array(
-					'on'     => self::AI_REVIEW_DRIVER,
-					'values' => array( Ai_Review::MODE_FILL, Ai_Review::MODE_ONLY ),
-				),
-				'description' => __( "収集したレビューがこの数に満たない分を AI が生成して補います。\n「AI生成のみ」では全量を AI が生成します。", GACHIREAI_TEXT_DOMAIN ),
+				'description'  => __( '使用できるレビューが最低掲載数に満たない時の挙動を選びます。', GACHIREAI_TEXT_DOMAIN ),
 			),
 		);
 	}
