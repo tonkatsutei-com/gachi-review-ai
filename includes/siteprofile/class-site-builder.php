@@ -212,21 +212,32 @@ final class Site_Builder {
 			)
 		);
 		$this->notify( $progress, __( 'サイト画像を生成中...', GACHIREAI_TEXT_DOMAIN ), 6 );
-		( new Favicon() )->generate();
-		( new Image_Profile() )->generate();
-		( new Top_Eyecatch() )->generate();
-		Event_Logger::record(
-			Event_Logger::TYPE_SYSTEM,
-			Event_Logger::LEVEL_INFO,
-			__( 'サイト画像を生成しました（ファビコン／プロフィール／トップ画）。', GACHIREAI_TEXT_DOMAIN )
-		);
+		$image_failures = $this->generate_site_images( (string) $settings->image()['fail_behavior'] );
+		if ( array() === $image_failures ) {
+			Event_Logger::record(
+				Event_Logger::TYPE_SYSTEM,
+				Event_Logger::LEVEL_INFO,
+				__( 'サイト画像を生成しました（ファビコン／プロフィール／トップ画）。', GACHIREAI_TEXT_DOMAIN )
+			);
+		} else {
+			Event_Logger::record(
+				Event_Logger::TYPE_SYSTEM,
+				Event_Logger::LEVEL_WARN,
+				sprintf(
+					__( '一部のサイト画像を生成できませんでした（設定どおり続行しました）: %s', GACHIREAI_TEXT_DOMAIN ),
+					implode( ' / ', $image_failures )
+				)
+			);
+		}
 		$this->notify( $progress, __( '最初の記事を生成・公開中...', GACHIREAI_TEXT_DOMAIN ), 7 );
 		$first_post = $this->generate_first_post( $user_id );
 		Event_Logger::record(
 			Event_Logger::TYPE_GENERATE,
 			Event_Logger::LEVEL_INFO,
 			sprintf(
-				__( '最初の記事を公開しました: %s', GACHIREAI_TEXT_DOMAIN ),
+				! empty( $first_post['published'] )
+					? __( '最初の記事を公開しました: %s', GACHIREAI_TEXT_DOMAIN )
+					: __( '最初の記事を下書きとして保存しました（アイキャッチ画像を生成できませんでした）: %s', GACHIREAI_TEXT_DOMAIN ),
 				(string) $first_post['title']
 			),
 			array( 'post_id' => (int) $first_post['post_id'] )
@@ -373,10 +384,30 @@ final class Site_Builder {
 		return $nodes[ array_rand( $nodes ) ];
 	}
 	private function generate_first_post( int $user_id ): array {
-		$saved   = ( new Article_Generator( new Settings() ) )->generate( null, null, '', '', true, $user_id, '', true );
-		$post_id = (int) ( $saved['post_id'] ?? 0 );
+		$settings = new Settings();
+		$image    = $settings->image();
+		$saved    = ( new Article_Generator( $settings ) )->generate( null, null, '', '', true, $user_id, '', true );
+		$post_id  = (int) ( $saved['post_id'] ?? 0 );
 		if ( $post_id <= 0 ) {
 			throw new \RuntimeException( __( '最初の記事の保存に失敗しました。', GACHIREAI_TEXT_DOMAIN ) );
+		}
+		$permalink = get_permalink( $post_id );
+		if ( 'failed' === (string) ( $saved['eyecatch_status'] ?? '' ) && Settings::IMAGE_FAIL_CONTINUE !== (string) $image['fail_behavior'] ) {
+			Event_Logger::record(
+				Event_Logger::TYPE_GENERATE,
+				Event_Logger::LEVEL_WARN,
+				sprintf(
+					__( '最初の記事のアイキャッチ画像を生成できなかったため、公開せずに下書きのまま残しました: %s', GACHIREAI_TEXT_DOMAIN ),
+					mb_substr( (string) ( $saved['eyecatch_message'] ?? '' ), 0, 300 )
+				),
+				array( 'post_id' => $post_id )
+			);
+			return array(
+				'post_id'   => $post_id,
+				'title'     => (string) ( $saved['post_title'] ?? '' ),
+				'permalink' => is_string( $permalink ) ? $permalink : '',
+				'published' => false,
+			);
 		}
 		wp_update_post(
 			array(
@@ -384,13 +415,31 @@ final class Site_Builder {
 				'post_status' => 'publish',
 			)
 		);
-		$permalink = get_permalink( $post_id );
 		return array(
 			'post_id'   => $post_id,
 			'title'     => (string) ( $saved['post_title'] ?? '' ),
 			'permalink' => is_string( $permalink ) ? $permalink : '',
 			'published' => true,
 		);
+	}
+	private function generate_site_images( string $fail_behavior ): array {
+		$generators = array(
+			__( 'ファビコン', GACHIREAI_TEXT_DOMAIN )             => new Favicon(),
+			__( 'プロフィール画像', GACHIREAI_TEXT_DOMAIN )       => new Image_Profile(),
+			__( 'トップページ用アイキャッチ', GACHIREAI_TEXT_DOMAIN ) => new Top_Eyecatch(),
+		);
+		$failures = array();
+		foreach ( $generators as $label => $generator ) {
+			try {
+				$generator->generate();
+			} catch ( \Throwable $e ) {
+				if ( Settings::IMAGE_FAIL_CONTINUE !== $fail_behavior ) {
+					throw $e;
+				}
+				$failures[] = $label;
+			}
+		}
+		return $failures;
 	}
 	private function delete_sample_content(): void {
 		$posts = get_posts(

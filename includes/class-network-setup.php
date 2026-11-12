@@ -16,6 +16,7 @@ final class Network_Setup {
 		'/* That’s all, stop editing! */',
 	);
 	private const BACKUP_SUFFIX = '.gachireai-bak-';
+	private const PLUGINS_OPTION = 'gachireai_network_plugins_pending';
 	public function state(): string {
 		if ( is_multisite() ) {
 			return self::STATE_COMPLETE;
@@ -101,6 +102,13 @@ final class Network_Setup {
 		);
 		return ! empty( $value );
 	}
+	public function subdirectory_disallowed(): bool {
+		global $wpdb;
+		$post = $wpdb->get_var(
+			"SELECT ID FROM {$wpdb->posts} WHERE post_date < DATE_SUB(NOW(), INTERVAL 1 MONTH) AND post_status = 'publish'"
+		);
+		return ! empty( $post );
+	}
 	public function write_allow_multisite(): void {
 		$errors = $this->preflight( 'allow' );
 		if ( array() !== $errors ) {
@@ -140,6 +148,97 @@ final class Network_Setup {
 			$this->write_safely( $path, $new, true );
 		}
 		$this->write_htaccess();
+	}
+	public function record_and_deactivate_plugins(): void {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$active = array_values(
+			array_filter(
+				(array) get_option( 'active_plugins', array() ),
+				'is_string'
+			)
+		);
+		$self   = plugin_basename( GACHIREAI_PLUGIN_FILE );
+		$targets = array_values(
+			array_filter(
+				$active,
+				static function ( $plugin ) use ( $self ) {
+					return $plugin !== $self;
+				}
+			)
+		);
+		$pending = array_values( array_unique( array_merge( $this->pending_plugins(), $targets, array( $self ) ) ) );
+		update_option( self::PLUGINS_OPTION, $pending );
+		if ( array() !== $targets ) {
+			deactivate_plugins( $targets, true );
+		}
+	}
+	public function create_network( bool $subdomain_install ): void {
+		if ( $this->network_tables_exist() ) {
+			return;
+		}
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		require_once ABSPATH . 'wp-admin/includes/schema.php';
+		global $wpdb;
+		foreach ( $wpdb->tables( 'ms_global' ) as $table => $prefixed_table ) {
+			$wpdb->$table = $prefixed_table;
+		}
+		install_network();
+		$result = populate_network(
+			1,
+			$this->domain(),
+			(string) get_option( 'admin_email' ),
+			$this->network_title(),
+			$this->base_path(),
+			$subdomain_install
+		);
+		if ( is_wp_error( $result ) && 'no_wildcard_dns' !== $result->get_error_code() ) {
+			throw new \RuntimeException( $result->get_error_message() );
+		}
+	}
+	public function activate_recorded_plugins(): void {
+		$pending = $this->pending_plugins();
+		if ( array() === $pending ) {
+			return;
+		}
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		foreach ( $pending as $plugin ) {
+			if ( is_plugin_active_for_network( $plugin ) ) {
+				continue;
+			}
+			activate_plugin( $plugin, '', true, false );
+		}
+		$self = plugin_basename( GACHIREAI_PLUGIN_FILE );
+		if ( is_plugin_active_for_network( $self ) && get_current_blog_id() === get_main_site_id() ) {
+			$site_active = array_values( array_diff( (array) get_option( 'active_plugins', array() ), array( $self ) ) );
+			update_option( 'active_plugins', $site_active );
+		}
+		delete_option( self::PLUGINS_OPTION );
+	}
+	public static function maybe_network_activate_recorded_plugins(): void {
+		if ( ! is_multisite() || ! current_user_can( 'manage_network' ) ) {
+			return;
+		}
+		( new self() )->activate_recorded_plugins();
+	}
+	public function restore_deactivated_plugins(): void {
+		$pending = $this->pending_plugins();
+		if ( array() === $pending ) {
+			return;
+		}
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		activate_plugins( $pending, '', is_multisite(), true );
+		delete_option( self::PLUGINS_OPTION );
+	}
+	private function pending_plugins(): array {
+		$pending = get_option( self::PLUGINS_OPTION, array() );
+		if ( ! is_array( $pending ) ) {
+			return array();
+		}
+		return array_values( array_filter( $pending, 'is_string' ) );
+	}
+	private function network_title(): string {
+		$blogname = (string) get_option( 'blogname' );
+		return '' !== $blogname ? $blogname : $this->domain();
 	}
 	private function write_htaccess(): void {
 		$path     = $this->htaccess_path();

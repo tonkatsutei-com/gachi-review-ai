@@ -1,0 +1,5 @@
+
+<p class="gachireai-widget-form">
+	<label for="{$field_id}">{$title_label}</label>
+	<input class="widefat" id="{$field_id}" name="{$field_name}" type="text" value="{$title_value}">
+</p>

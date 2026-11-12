@@ -347,6 +347,7 @@ final class Auto_Post_Pipeline {
 			);
 			return;
 		}
+		$fail_behavior = (string) $this->settings->image()['fail_behavior'];
 		try {
 			$result = $this->eyecatch(
 				$post_id,
@@ -354,28 +355,20 @@ final class Auto_Post_Pipeline {
 				(array) $state['product']
 			);
 		} catch ( \Throwable $e ) {
+			if ( Settings::IMAGE_FAIL_CONTINUE === $fail_behavior ) {
+				$this->advance_without_eyecatch( $state, $e->getMessage(), 'failed', $post_id, $started );
+				return;
+			}
 			$this->fail_step( $state, $e->getMessage(), true, Event_Logger::TYPE_GENERATE );
 			return;
 		}
 		$status = (string) ( $result['status'] ?? '' );
 		if ( 'generated' !== $status ) {
-			$state['step']    = self::STEP_READY;
-			$state['attempt'] = 1;
-			$this->save( $state );
-			Event_Logger::record(
-				Event_Logger::TYPE_GENERATE,
-				Event_Logger::LEVEL_WARN,
-				sprintf(
-					__( 'アイキャッチ画像を生成せずに待機します: %s', GACHIREAI_TEXT_DOMAIN ),
-					(string) ( $result['message'] ?? '' )
-				),
-				array(
-					'post_id'         => $post_id,
-					'eyecatch_status' => $status,
-				),
-				$post_id,
-				self::elapsed_ms( $started )
-			);
+			if ( 'failed' === $status && Settings::IMAGE_FAIL_ABORT === $fail_behavior ) {
+				$this->fail_step( $state, (string) ( $result['message'] ?? '' ), true, Event_Logger::TYPE_GENERATE );
+				return;
+			}
+			$this->advance_without_eyecatch( $state, (string) ( $result['message'] ?? '' ), $status, $post_id, $started );
 			return;
 		}
 		$state['step']    = self::STEP_READY;
@@ -387,6 +380,25 @@ final class Auto_Post_Pipeline {
 			sprintf(
 				__( 'アイキャッチ画像を生成しました（投稿時刻まで待機します）: %s', GACHIREAI_TEXT_DOMAIN ),
 				(string) ( $state['post_title'] ?? '' )
+			),
+			array(
+				'post_id'         => $post_id,
+				'eyecatch_status' => $status,
+			),
+			$post_id,
+			self::elapsed_ms( $started )
+		);
+	}
+	private function advance_without_eyecatch( array $state, string $message, string $status, int $post_id, float $started ): void {
+		$state['step']    = self::STEP_READY;
+		$state['attempt'] = 1;
+		$this->save( $state );
+		Event_Logger::record(
+			Event_Logger::TYPE_GENERATE,
+			Event_Logger::LEVEL_WARN,
+			sprintf(
+				__( 'アイキャッチ画像を生成せずに待機します: %s', GACHIREAI_TEXT_DOMAIN ),
+				$message
 			),
 			array(
 				'post_id'         => $post_id,

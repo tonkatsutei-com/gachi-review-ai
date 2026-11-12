@@ -210,7 +210,9 @@
 				?$backup_sites
 				<fieldset class="gachireai-maintenance__sites">
 					<legend>{$backup_sites_label}</legend>
+					?$backup_common_visible
 					<label><input type="checkbox" name="{$backup_common_name}" value="1" ?$backup_common_checked checked$backup_common_checked?> {$backup_common_label}</label>
+					$backup_common_visible?
 					[$backup_sites]
 					<label><input type="checkbox" name="{$backup_site_name}" value="{$value}" ?$checked checked$checked?> {$label}</label>
 					[/$backup_sites]
@@ -350,6 +352,13 @@
 			$network_show_not_pro?
 			<p class="description">{$network_status_label}</p>
 			<p class="description">{$network_paths_note}</p>
+			?$network_messages
+			<div class="gachireai-section__messages">
+				[$network_messages]
+				<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
+				[/$network_messages]
+			</div>
+			$network_messages?
 			?$network_show_network_setup
 			<p class="description">{$network_network_setup_guide}</p>
 			<p class="gachireai-section__actions">
@@ -364,16 +373,18 @@
 				[/$network_hidden_fields]
 				$network_hidden_fields?
 				<input type="hidden" name="{$network_step_field}" value="{$network_step_value}">
+				?$network_show_subdomain
+				<p class="gachireai-maintenance__risk">
+					<label><input type="radio" name="{$network_subdomain_name}" value="0" ?$network_subdir_checked checked$network_subdir_checked? ?$network_subdir_disabled disabled$network_subdir_disabled?> {$network_subdir_label}</label>
+					<label><input type="radio" name="{$network_subdomain_name}" value="1" ?$network_subdomain_checked checked$network_subdomain_checked?> {$network_subdomain_label}</label>
+				</p>
+				?$network_subdir_note
+				<p class="description">{$network_subdir_note}<br>{$network_subdir_note_second}</p>
+				$network_subdir_note?
+				$network_show_subdomain?
 				<p class="gachireai-section__actions">
 					<button type="button" class="button button-primary" data-gachireai-network-open>{$network_button_label}</button>
 				</p>
-				?$network_messages
-				<div class="gachireai-section__messages">
-					[$network_messages]
-					<div class="notice inline notice-{$msg_type}"><p>{$msg_text}</p></div>
-					[/$network_messages]
-				</div>
-				$network_messages?
 				<div class="gachireai-modal gachireai-modal--reset" data-gachireai-network-dialog hidden>
 					<div class="gachireai-modal__panel" role="dialog" aria-modal="true" aria-labelledby="gachireai-network-title">
 						<h3 class="gachireai-modal__title" id="gachireai-network-title">{$network_confirm_title}</h3>

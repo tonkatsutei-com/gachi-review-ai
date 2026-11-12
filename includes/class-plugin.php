@@ -11,9 +11,11 @@ use Tonkatsutei\Gachi_Review_AI\Article\Eyecatch_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Article\Retention_Cleaner;
 use Tonkatsutei\Gachi_Review_AI\Article\Source_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
+use Tonkatsutei\Gachi_Review_AI\Sitemap\Sitemap;
 use Tonkatsutei\Gachi_Review_AI\Top\Ogp;
 use Tonkatsutei\Gachi_Review_AI\Top\Top_Page_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Update\Update_Checker;
+use Tonkatsutei\Gachi_Review_AI\Widget\Sister_Sites;
 final class Plugin {
 	private static ?Plugin $instance = null;
 	public static function instance(): Plugin {
@@ -25,6 +27,7 @@ final class Plugin {
 	public function init(): void {
 		if ( is_multisite() ) {
 			add_action( 'wp_initialize_site', array( Activator::class, 'activate_new_site' ) );
+			add_action( 'admin_init', array( Network_Setup::class, 'maybe_network_activate_recorded_plugins' ) );
 		}
 		if ( Multisite::should_show_network_notice() ) {
 			add_action( 'network_admin_notices', array( Multisite::class, 'render_network_notice' ) );
@@ -59,6 +62,8 @@ final class Plugin {
 		Dialogue_Shortcode::register();
 		Top_Page_Shortcode::register();
 		Ogp::register();
+		Sister_Sites::register();
+		Sitemap::register();
 		Update_Checker::register();
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_front_assets' ) );
 	}

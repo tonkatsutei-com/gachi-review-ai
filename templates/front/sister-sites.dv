@@ -1,0 +1,25 @@
+
+?$sites
+<div class="gachireai-sister-sites">
+	?$has_title
+	<h2 class="gachireai-sister-sites__title">{$title}</h2>
+	$has_title?
+	<ul class="gachireai-sister-sites__list">
+		[$sites]
+		<li class="gachireai-sister-sites__item">
+			<a class="gachireai-sister-sites__card" href="{$site_url}">
+				?$has_image
+				<span class="gachireai-sister-sites__thumb"><img src="{$image_url}" alt="{$site_name}" loading="lazy"></span>
+				$has_image?
+				<span class="gachireai-sister-sites__body">
+					<span class="gachireai-sister-sites__name">{$site_name}</span>
+					?$has_description
+					<span class="gachireai-sister-sites__desc">{$site_description}</span>
+					$has_description?
+				</span>
+			</a>
+		</li>
+		[/$sites]
+	</ul>
+</div>
+$sites?

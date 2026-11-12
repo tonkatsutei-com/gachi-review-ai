@@ -9,6 +9,8 @@ class Settings {
 	public const TOP_HERO_WITH_TITLE = 'with_title';
 	public const TOP_HERO_IMAGE_ONLY = 'image_only';
 	public const TOP_HERO_HIDDEN     = 'hidden';
+	public const IMAGE_FAIL_ABORT    = 'abort';
+	public const IMAGE_FAIL_CONTINUE = 'continue';
 	public const DEFAULT_DISCLOSURE_TEXT = 'この画像は記事を元にAIで生成したものであり、紹介する商品とは無関係です。';
 	public const DISCLOSURE_KEYS = array( 'affiliate', 'image', 'review', 'article' );
 	public const DISCLOSURE_POSITION_TOP = 'top';
@@ -272,6 +274,7 @@ class Settings {
 			'model'        => $value( $image, 'model', '' ),
 			'steps'        => $value( $image, 'steps', '4' ),
 			'reuse_llm'    => $value( $image, 'reuse_llm', '' ),
+			'fail_behavior' => self::normalize_image_fail_behavior( $value( $image, 'fail_behavior', self::IMAGE_FAIL_ABORT ) ),
 			'style'        => $value( $image, 'style', 'cinematic' ),
 			'style_text'   => $value( $image, 'style_text', '' ),
 			'style_text_en' => $value( $image, 'style_text_en', '' ),
@@ -324,6 +327,11 @@ class Settings {
 	}
 	private static function normalize_eyecatch_mode( string $mode ): string {
 		return in_array( $mode, array( 'generate', 'top', 'select' ), true ) ? $mode : 'generate';
+	}
+	private static function normalize_image_fail_behavior( string $behavior ): string {
+		return in_array( $behavior, array( self::IMAGE_FAIL_ABORT, self::IMAGE_FAIL_CONTINUE ), true )
+			? $behavior
+			: self::IMAGE_FAIL_ABORT;
 	}
 	public function image_api_key( ?array $image = null ): string {
 		$image = null === $image ? $this->image() : $image;

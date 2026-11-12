@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ガチレビュー.AI
  * Description:       商品リサーチから口コミ収集、レビュー記事の生成を、AIを使って自動化します。
- * Version:           0.226.3
+ * Version:           0.230.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Tonkatsutei

@@ -644,7 +644,7 @@ final class Api_Affiliate extends Screen
 			return array('engine', 'api_key', 'model');
 		}
 		if (self::KEY_IMAGE === $key) {
-			return array('provider', 'account_id', 'api_key', 'reuse_llm', 'model', 'steps');
+			return array('provider', 'account_id', 'api_key', 'reuse_llm', 'model', 'steps', 'fail_behavior');
 		}
 		if (self::KEY_EC === $key) {
 			return array('ec', 'selection');
@@ -1195,6 +1195,16 @@ final class Api_Affiliate extends Screen
 					'values' => array(Image_Catalog::CLOUDFLARE),
 				),
 				'description' => __('増やすと品質が上がりますが、生成時間と料金も増えます。', GACHIREAI_TEXT_DOMAIN),
+			),
+			'fail_behavior' => array(
+				'label'       => __('生成に失敗した時', GACHIREAI_TEXT_DOMAIN),
+				'type'        => 'radio',
+				'options'     => array(
+					Settings::IMAGE_FAIL_ABORT    => __('以降の処理を中断', GACHIREAI_TEXT_DOMAIN),
+					Settings::IMAGE_FAIL_CONTINUE => __('以降の処理を続行（手動で画像生成をやり直す）', GACHIREAI_TEXT_DOMAIN),
+				),
+				'default'     => Settings::IMAGE_FAIL_ABORT,
+				'description' => __('自動サイト生成・自動記事生成など、複数の処理を一連で実行している途中で画像生成に失敗したときの以降の動作です。', GACHIREAI_TEXT_DOMAIN),
 			),
 		);
 	}

@@ -6,6 +6,7 @@ use Tonkatsutei\Gachi_Review_AI\Ec\Product_Ledger;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Event_Logger;
 use Tonkatsutei\Gachi_Review_AI\Image\Eyecatch;
+use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 use Tonkatsutei\Gachi_Review_AI\Sns\Sns_Review_Collector;
 final class Batch_Generator {
@@ -207,14 +208,25 @@ final class Batch_Generator {
 					);
 				}
 				if ( ! $eyecatch_ok ) {
-					$messages[] = $this->message(
-						'warning',
-						sprintf(
-							__( 'アイキャッチ画像を生成できなかったため、公開せずに停止しました: %s', GACHIREAI_TEXT_DOMAIN ),
-							$eyecatch_msg
-						)
-					);
-					return $this->result( true, $post_id, $post_title, $result, false, $messages, $product, $ec, $query, $collected_map );
+					$fail_behavior = (string) ( new Settings() )->image()['fail_behavior'];
+					if ( Settings::IMAGE_FAIL_CONTINUE === $fail_behavior ) {
+						$messages[] = $this->message(
+							'warning',
+							sprintf(
+								__( 'アイキャッチ画像を生成できませんでした（設定どおり続行します）。手動で生成し直してください: %s', GACHIREAI_TEXT_DOMAIN ),
+								$eyecatch_msg
+							)
+						);
+					} else {
+						$messages[] = $this->message(
+							'warning',
+							sprintf(
+								__( 'アイキャッチ画像を生成できなかったため、公開せずに停止しました: %s', GACHIREAI_TEXT_DOMAIN ),
+								$eyecatch_msg
+							)
+						);
+						return $this->result( true, $post_id, $post_title, $result, false, $messages, $product, $ec, $query, $collected_map );
+					}
 				}
 				$eyecatch_final = (string) ( $eyecatch['status'] ?? '' );
 				Event_Logger::record(

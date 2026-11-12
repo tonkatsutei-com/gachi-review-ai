@@ -729,6 +729,16 @@ final class Common_Settings extends Screen {
 				'max'         => 200,
 				'description' => __( '空欄ならプロバイダーの既定モデルを使います。', GACHIREAI_TEXT_DOMAIN ),
 			),
+			'fail_behavior' => array(
+				'label'       => __( '生成に失敗した時', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'radio',
+				'options'     => array(
+					Settings::IMAGE_FAIL_ABORT    => __( '以降の処理を中断', GACHIREAI_TEXT_DOMAIN ),
+					Settings::IMAGE_FAIL_CONTINUE => __( '以降の処理を続行（手動で画像生成をやり直す）', GACHIREAI_TEXT_DOMAIN ),
+				),
+				'default'     => Settings::IMAGE_FAIL_ABORT,
+				'description' => __( '自動サイト生成・自動記事生成など、複数の処理を一連で実行している途中で画像生成に失敗したときの以降の動作です。', GACHIREAI_TEXT_DOMAIN ),
+			),
 		);
 	}
 	private function definitions_youtube(): array {

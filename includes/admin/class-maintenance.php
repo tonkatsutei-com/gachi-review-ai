@@ -8,6 +8,7 @@ use Tonkatsutei\Gachi_Review_AI\License\Store;
 use Tonkatsutei\Gachi_Review_AI\Network_Setup;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
+use Tonkatsutei\Gachi_Review_AI\Widget\Sister_Sites;
 final class Maintenance extends Screen
 {
 	public const ACTION_BACKUP = 'gachireai_maintenance_backup';
@@ -36,6 +37,7 @@ final class Maintenance extends Screen
 	private const NONCE_NETWORK = 'gachireai_maintenance_network';
 	private const NETWORK_STEP_FIELD = 'gachireai_network_step';
 	private const NETWORK_CONFIRM_FIELD = 'gachireai_network_confirm';
+	private const NETWORK_SUBDOMAIN_FIELD = 'gachireai_network_subdomain';
 	private const NETWORK_ERROR_TRANSIENT = 'gachireai_network_error_';
 	public const ACTION_INSTALL_PLUGIN = 'gachireai_maintenance_install_plugin';
 	private const NONCE_INSTALL_PLUGIN = 'gachireai_maintenance_install_plugin';
@@ -161,26 +163,37 @@ final class Maintenance extends Screen
 		$step = isset($_POST[self::NETWORK_STEP_FIELD])
 			? sanitize_key(wp_unslash((string) $_POST[self::NETWORK_STEP_FIELD]))
 			: '';
+		$subdomain = isset($_POST[self::NETWORK_SUBDOMAIN_FIELD])
+			&& '1' === sanitize_key(wp_unslash((string) $_POST[self::NETWORK_SUBDOMAIN_FIELD]));
 		$setup  = new Network_Setup();
 		$result = 'network_error';
-		try {
-			if ('allow' === $step) {
-				$setup->write_allow_multisite();
-				$result = 'network_allow_done';
-			} elseif ('apply' === $step) {
-				$setup->write_constants_and_htaccess();
-				$result = 'network_apply_done';
-			} else {
+		if ('allow' === $step || 'apply' === $step) {
+			if (! $subdomain && $setup->subdirectory_disallowed()) {
 				set_transient(
 					self::NETWORK_ERROR_TRANSIENT . get_current_user_id(),
-					esc_html__('手順の指定が不正です。', GACHIREAI_TEXT_DOMAIN),
+					esc_html__('このサイトには公開から1か月以上経過した投稿があるため、サブディレクトリ型は選択できません。サブドメイン型を選んでください。', GACHIREAI_TEXT_DOMAIN),
+					300
+				);
+				$this->redirect('network_error');
+			}
+			try {
+				$setup->record_and_deactivate_plugins();
+				$setup->write_allow_multisite();
+				$setup->create_network($subdomain);
+				$setup->write_constants_and_htaccess();
+				$result = 'network_done';
+			} catch (\Throwable $e) {
+				$setup->restore_deactivated_plugins();
+				set_transient(
+					self::NETWORK_ERROR_TRANSIENT . get_current_user_id(),
+					mb_substr(trim($e->getMessage()), 0, 500),
 					300
 				);
 			}
-		} catch (\Throwable $e) {
+		} else {
 			set_transient(
 				self::NETWORK_ERROR_TRANSIENT . get_current_user_id(),
-				mb_substr(trim($e->getMessage()), 0, 500),
+				esc_html__('手順の指定が不正です。', GACHIREAI_TEXT_DOMAIN),
 				300
 			);
 		}
@@ -316,6 +329,7 @@ final class Maintenance extends Screen
 		update_option('comment_whitelist', 0);
 		update_option('permalink_structure', $this->permalink_structure());
 		flush_rewrite_rules();
+		Sister_Sites::ensure_installed();
 	}
 	private function permalink_structure(): string
 	{
@@ -1068,6 +1082,7 @@ final class Maintenance extends Screen
 			'backup_note'              => esc_html__('ライセンスIDと、チェックしたサイトの設定を含みます。', GACHIREAI_TEXT_DOMAIN),
 			'backup_common_label'   => esc_html__('共通設定', GACHIREAI_TEXT_DOMAIN),
 			'backup_common_name'    => esc_attr(self::BACKUP_COMMON_FIELD),
+			'backup_common_visible' => is_multisite(),
 			'backup_common_checked' => true,
 			'backup_button_label'      => esc_html__('バックアップ', GACHIREAI_TEXT_DOMAIN),
 			'restore_title'         => esc_html__('リストア', GACHIREAI_TEXT_DOMAIN),
@@ -1234,32 +1249,51 @@ final class Maintenance extends Screen
 			'network_complete'            => '',
 			'network_complete_message'    => '',
 			'network_server_note'         => '',
+			'network_show_subdomain'      => '',
+			'network_subdomain_name'      => '',
+			'network_subdomain_checked'   => '',
+			'network_subdir_checked'      => '',
+			'network_subdir_disabled'     => '',
+			'network_subdir_note'         => '',
+			'network_subdir_note_second'  => '',
+			'network_subdomain_label'     => '',
+			'network_subdir_label'        => '',
 		);
 		if ($this->common_mode) {
 			return $hidden;
 		}
-		$is_pro = Status::capabilities()->can_use_multisite();
-		$setup  = new Network_Setup();
-		$state  = $setup->state();
+		$is_pro            = Status::capabilities()->can_use_multisite();
+		$setup             = new Network_Setup();
+		$state             = $setup->state();
+		$subdir_disallowed = $setup->subdirectory_disallowed();
 		$wp_config = (string) $setup->wp_config_path();
 		$model = array(
 			'network_visible'             => '1',
 			'network_title'               => esc_html__('マルチサイト化', GACHIREAI_TEXT_DOMAIN),
-			'network_description'         => esc_html__("このサイトをマルチサイト（ネットワーク）に切り替えます。\nWordPress は wp-config.php と .htaccess の編集を自動で行わないため、この画面がその 2 ファイルの書き換えを代行します。", GACHIREAI_TEXT_DOMAIN),
+			'network_description'         => esc_html__("このサイトをマルチサイト（ネットワーク）に切り替えます。\n有効化中のプラグインの無効化・再有効化、ネットワークテーブルの作成、wp-config.php と .htaccess の編集をまとめて代行します（1 回の実行で完了します）。", GACHIREAI_TEXT_DOMAIN),
 			'network_show_not_pro'        => $is_pro ? '' : '1',
 			'network_pro_notice'          => esc_html__('マルチサイト化は PRO ライセンスでのみ利用できます。', GACHIREAI_TEXT_DOMAIN),
 			'network_status_label'        => esc_html($this->network_status_label($state)),
 			'network_paths_note'          => esc_html($this->network_paths_note($setup, $wp_config)),
 			'network_show_network_setup'  => '',
-			'network_network_setup_url'   => esc_url(admin_url('network.php')),
-			'network_network_setup_label' => esc_html__('ネットワーク設定を開く', GACHIREAI_TEXT_DOMAIN),
-			'network_network_setup_guide' => esc_html__("WP_ALLOW_MULTISITE を追記しました。次は「ツール → ネットワーク設定」でネットワークを作成してください。\n作成が終わったらこの画面に戻り、残りの反映を行います。", GACHIREAI_TEXT_DOMAIN),
+			'network_network_setup_url'   => '',
+			'network_network_setup_label' => '',
+			'network_network_setup_guide' => '',
 			'network_show_form'           => '',
 			'network_action_url'          => esc_url(admin_url('admin-post.php')),
 			'network_hidden_fields'       => $this->hidden_fields(self::ACTION_NETWORK, self::NONCE_NETWORK),
 			'network_step_field'          => esc_attr(self::NETWORK_STEP_FIELD),
 			'network_step_value'          => '',
 			'network_button_label'        => '',
+			'network_show_subdomain'      => '',
+			'network_subdomain_name'      => esc_attr(self::NETWORK_SUBDOMAIN_FIELD),
+			'network_subdomain_checked'   => '',
+			'network_subdir_checked'      => '',
+			'network_subdir_disabled'     => '',
+			'network_subdir_note'         => '',
+			'network_subdir_note_second'  => '',
+			'network_subdomain_label'     => esc_html__('サブドメイン型', GACHIREAI_TEXT_DOMAIN),
+			'network_subdir_label'        => esc_html__('サブディレクトリ型', GACHIREAI_TEXT_DOMAIN),
 			'network_messages'            => $this->network_messages(),
 			'network_confirm_title'       => esc_html__('実行の前に確認してください', GACHIREAI_TEXT_DOMAIN),
 			'network_confirm_description' => '',
@@ -1269,31 +1303,35 @@ final class Maintenance extends Screen
 			'network_cancel_label'        => esc_html__('キャンセル', GACHIREAI_TEXT_DOMAIN),
 			'network_complete'            => '',
 			'network_complete_message'    => esc_html__('既にマルチサイト化が完了しています。', GACHIREAI_TEXT_DOMAIN),
-			'network_server_note'         => esc_html__('サブドメイン型を選ぶ場合は、サーバー側でワイルドカード DNS と SSL 証明書の設定が必要です（サーバー側の設定はこのプラグインでは行いません）。', GACHIREAI_TEXT_DOMAIN),
+			'network_server_note'         => esc_html__('サブドメイン型は DNS／SSL が別途必要です（サーバー側の設定はこのプラグインでは行いません）。', GACHIREAI_TEXT_DOMAIN),
 		);
 		if (Network_Setup::STATE_COMPLETE === $state) {
 			$model['network_complete']     = '1';
 			$model['network_show_not_pro'] = '';
-			$model['network_button_label'] = esc_html__('マルチサイト化を開始', GACHIREAI_TEXT_DOMAIN);
+			$model['network_button_label'] = esc_html__('マルチサイト化を実行', GACHIREAI_TEXT_DOMAIN);
 			return $model;
 		}
 		if (! $is_pro) {
 			return $model;
 		}
-		if (Network_Setup::STATE_NOT_DEFINED === $state) {
-			$model['network_show_form']           = '1';
-			$model['network_step_value']          = 'allow';
-			$model['network_button_label']        = esc_html__('マルチサイト化を開始', GACHIREAI_TEXT_DOMAIN);
-			$model['network_confirm_description'] = esc_html__('wp-config.php に WP_ALLOW_MULTISITE を追記します。この定数は機能に影響しません（ネットワーク設定のメニューが出るだけです）。書き込み前に wp-config.php を手動でバックアップすることを推奨します。', GACHIREAI_TEXT_DOMAIN);
-			$model['network_confirm_button']      = esc_html__('追記する', GACHIREAI_TEXT_DOMAIN);
-		} elseif (Network_Setup::STATE_ALLOW_DEFINED === $state) {
-			$model['network_show_network_setup'] = '1';
-		} elseif (Network_Setup::STATE_TABLES_EXIST === $state) {
-			$model['network_show_form']           = '1';
-			$model['network_step_value']          = 'apply';
-			$model['network_button_label']        = esc_html__('定数と .htaccess を反映', GACHIREAI_TEXT_DOMAIN);
+		$model['network_show_form']      = '1';
+		$model['network_step_value']     = 'allow';
+		$model['network_button_label']   = esc_html__('マルチサイト化を実行', GACHIREAI_TEXT_DOMAIN);
+		$model['network_confirm_button'] = esc_html__('実行する', GACHIREAI_TEXT_DOMAIN);
+		if (Network_Setup::STATE_TABLES_EXIST === $state) {
 			$model['network_confirm_description'] = esc_html__('wp-config.php に 6 つの定数（MULTISITE など）を追記し、.htaccess をマルチサイト用のリライトルールに置き換えます。反映後は再ログインが必要です。書き込み前に wp-config.php と .htaccess を手動でバックアップすることを推奨します。', GACHIREAI_TEXT_DOMAIN);
-			$model['network_confirm_button']      = esc_html__('反映する', GACHIREAI_TEXT_DOMAIN);
+		} else {
+			$model['network_show_subdomain']      = '1';
+			$model['network_subdir_checked']      = $subdir_disallowed ? '' : '1';
+			$model['network_subdomain_checked']   = $subdir_disallowed ? '1' : '';
+			$model['network_subdir_disabled']     = $subdir_disallowed ? 'disabled' : '';
+			$model['network_subdir_note']         = $subdir_disallowed
+				? esc_html__('このサイトには公開から1か月以上経過した投稿があります。', GACHIREAI_TEXT_DOMAIN)
+				: '';
+			$model['network_subdir_note_second']  = $subdir_disallowed
+				? esc_html__('WordPress の仕様により、サブディレクトリ型は選択できません。', GACHIREAI_TEXT_DOMAIN)
+				: '';
+			$model['network_confirm_description'] = esc_html__("有効化中のプラグインを無効化し、wp-config.php への定数の追記・ネットワークテーブルの作成・.htaccess の反映をまとめて行います（完了後にプラグインをサイトネットワークで再度有効化します）。\n反映後は再ログインが必要です。書き込み前に wp-config.php と .htaccess を手動でバックアップすることを推奨します。", GACHIREAI_TEXT_DOMAIN);
 		}
 		return $model;
 	}
@@ -1301,9 +1339,9 @@ final class Maintenance extends Screen
 	{
 		switch ($state) {
 			case Network_Setup::STATE_ALLOW_DEFINED:
-				return __('現在の状態: WP_ALLOW_MULTISITE まで追記済み（次はネットワーク設定）', GACHIREAI_TEXT_DOMAIN);
+				return __('現在の状態: WP_ALLOW_MULTISITE まで追記済み（［実行］でネットワーク作成まで完了します）', GACHIREAI_TEXT_DOMAIN);
 			case Network_Setup::STATE_TABLES_EXIST:
-				return __('現在の状態: ネットワークテーブル作成済み（次は定数と .htaccess の反映）', GACHIREAI_TEXT_DOMAIN);
+				return __('現在の状態: ネットワークテーブル作成済み（［実行］で定数と .htaccess を反映します）', GACHIREAI_TEXT_DOMAIN);
 			case Network_Setup::STATE_COMPLETE:
 				return __('現在の状態: マルチサイト化が完了しています', GACHIREAI_TEXT_DOMAIN);
 		}
@@ -1324,14 +1362,9 @@ final class Maintenance extends Screen
 	private function network_messages(): array
 	{
 		$result = $this->result();
-		if ('network_allow_done' === $result) {
+		if ('network_done' === $result) {
 			return array(
-				$this->message('success', esc_html__("wp-config.php に WP_ALLOW_MULTISITE を追記しました。\n画面を再読み込みしてから「ツール → ネットワーク設定」へ進んでください。", GACHIREAI_TEXT_DOMAIN)),
-			);
-		}
-		if ('network_apply_done' === $result) {
-			return array(
-				$this->message('success', esc_html__("定数と .htaccess を反映しました。再ログインするとマルチサイトとして動作します。\nサブドメイン型の場合は、サーバー側のワイルドカード DNS／SSL の設定も確認してください。", GACHIREAI_TEXT_DOMAIN)),
+				$this->message('success', esc_html__("マルチサイト化を実行しました。再ログインするとマルチサイトとして動作します。\n無効化したプラグインはサイトネットワークで自動的に再有効化します。サブドメイン型の場合は、DNS／SSL の設定も別途確認してください。", GACHIREAI_TEXT_DOMAIN)),
 			);
 		}
 		if ('network_unconfirmed' === $result) {

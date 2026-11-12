@@ -32,8 +32,13 @@ final class Dialogue_Character {
 			'message'       => '',
 			'image_error'   => '',
 		);
+		$fail_behavior = (string) $image['fail_behavior'];
 		if ( '' === $api_key ) {
-			$result['image_error'] = __( '画像生成AIの API キーが未設定です。', GACHIREAI_TEXT_DOMAIN );
+			$image_error = __( '画像生成AIの API キーが未設定です。', GACHIREAI_TEXT_DOMAIN );
+			if ( Settings::IMAGE_FAIL_ABORT === $fail_behavior ) {
+				throw new \RuntimeException( $image_error );
+			}
+			$result['image_error'] = $image_error;
 			$result['message']     = __( 'メンティーのキャラ設定を生成しました（画像は未生成）。', GACHIREAI_TEXT_DOMAIN );
 			return $result;
 		}
@@ -91,15 +96,25 @@ final class Dialogue_Character {
 				(int) round( ( microtime( true ) - $started ) * 1000 )
 			);
 		} catch ( \Throwable $e ) {
+			$error_message = sprintf(
+				__( 'メンティー画像の生成に失敗しました: %s', GACHIREAI_TEXT_DOMAIN ),
+				mb_substr( $e->getMessage(), 0, 300 )
+			);
+			if ( Settings::IMAGE_FAIL_ABORT === $fail_behavior ) {
+				Event_Logger::record(
+					Event_Logger::TYPE_SYSTEM,
+					Event_Logger::LEVEL_ERROR,
+					$error_message,
+					array( 'kind' => 'dialogue_mentee' )
+				);
+				throw new \RuntimeException( $error_message, 0, $e );
+			}
 			$result['image_error'] = $e->getMessage();
 			$result['message']     = __( 'メンティーのキャラ設定を生成しました（画像の生成に失敗しました）。', GACHIREAI_TEXT_DOMAIN );
 			Event_Logger::record(
 				Event_Logger::TYPE_SYSTEM,
 				Event_Logger::LEVEL_WARN,
-				sprintf(
-					__( 'メンティー画像の生成に失敗しました: %s', GACHIREAI_TEXT_DOMAIN ),
-					mb_substr( $e->getMessage(), 0, 300 )
-				),
+				$error_message,
 				array( 'kind' => 'dialogue_mentee' )
 			);
 		}
