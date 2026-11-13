@@ -22,7 +22,8 @@ final class Top_Page_Shortcode {
 		return self::render_image( $photo, 'medium', $alt, 'top/profile-photo' );
 	}
 	public static function render_top_eyecatch( $atts = array(), $content = null, $tag = '' ): string {
-		$top_hero = ( new Settings() )->image()['top_hero'];
+		$settings = new Settings();
+		$top_hero = $settings->image()['top_hero'];
 		if ( Settings::TOP_HERO_HIDDEN === $top_hero ) {
 			return '';
 		}
@@ -33,7 +34,30 @@ final class Top_Page_Shortcode {
 		$elements    = $profile->get_site_elements();
 		$site_name   = is_scalar( $elements['site_name'] ?? '' ) ? (string) $elements['site_name'] : '';
 		$title       = Settings::TOP_HERO_WITH_TITLE === $top_hero ? $site_name : '';
-		return self::render_image( $image_id, 'full', $site_name, 'top/top-eyecatch', $title );
+		$html = self::render_image( $image_id, 'full', $site_name, 'top/top-eyecatch', $title );
+		if ( '' === $html ) {
+			return '';
+		}
+		return $html . self::annotation_html( $settings->image_annotation()['image_top'] ?? array() );
+	}
+	private static function annotation_html( array $item ): string {
+		if ( '1' !== (string) ( $item['enabled'] ?? '' ) ) {
+			return '';
+		}
+		$text = trim( (string) ( $item['text'] ?? '' ) );
+		if ( '' === $text ) {
+			return '';
+		}
+		try {
+			return trim(
+				( new Div_Renderer() )->render(
+					'article/eyecatch-notice',
+					array( 'notice_text' => esc_html( $text ) )
+				)
+			);
+		} catch ( \Throwable $e ) {
+			return '';
+		}
 	}
 	private static function render_image( int $attachment_id, string $size, string $alt, string $template, string $title = '' ): string {
 		if ( 0 >= $attachment_id || ! function_exists( 'wp_get_attachment_image_url' ) ) {

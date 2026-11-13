@@ -110,9 +110,6 @@
 			</p>
 		</div>
 		$is_image?
-		?$is_password
-		<input type="password" id="{$name}" name="{$name}" value="{$value}" class="regular-text" autocomplete="new-password" ?$placeholder placeholder="{$placeholder}"$placeholder? ?$field_disabled disabled$field_disabled?>
-		$is_password?
 		?$is_cron
 		<span class="gachireai-cron">
 			<label class="gachireai-cron__item"><span class="gachireai-cron__label">分</span><input type="text" name="{$cron_minute_name}" value="{$cron_minute}" class="gachireai-cron__input gachireai-cron__minute"></label>

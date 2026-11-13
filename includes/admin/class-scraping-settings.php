@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Admin;
+use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Scraping\Connection_Tester;
 use Tonkatsutei\Gachi_Review_AI\Scraping\Service_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Scraping\Store;
+use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Scraping_Settings extends Screen {
 	public const ACTION_SAVE = 'gachireai_scraping_save';
-	public const ACTION_SWITCH = 'gachireai_scraping_switch';
-	private const NONCE_SWITCH = 'gachireai_scraping_switch';
 	private const NONCE_SAVE = 'gachireai_scraping_settings';
 	public const RESULT_ARG = 'gachireai_scraping_result';
 	public const SERVICE_ARG = 'gachireai_scraping_service';
@@ -29,16 +29,27 @@ final class Scraping_Settings extends Screen {
 		check_admin_referer( self::NONCE_SAVE );
 		$service = isset( $_POST['service'] ) ? sanitize_key( wp_unslash( (string) $_POST['service'] ) ) : '';
 		$posted  = isset( $_POST[ self::FIELD ] ) ? (string) wp_unslash( $_POST[ self::FIELD ] ) : '';
+		$copy    = isset( $_POST[ self::COPY_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::COPY_FIELD ] ) ) : '';
 		if ( ! Service_Catalog::exists( $service ) ) {
 			wp_safe_redirect( Tabs::url( Tabs::TAB_SCRAPING ) );
 			exit;
 		}
-		$current = Store::get( $service )['api_key'];
-		$posted  = trim( $posted );
-		$key = ( '' === $posted || $posted === $this->mask_api_key( $current ) )
-			? $current
-			: Store::sanitize_api_key( $posted );
+		$copy_key = 'scraping_' . $service;
+		if ( '' !== $copy && $copy_key === $copy ) {
+			if ( is_multisite() ) {
+				$this->add_pending_copy( $copy_key );
+			}
+			$this->redirect( $service, '' );
+		}
+		$use_common = $this->apply_scraping_switch( $service );
+		if ( $use_common ) {
+			$this->clear_pending_copy( $copy_key );
+			$this->redirect( $service, '' );
+		}
+		$posted = trim( $posted );
+		$key = Store::sanitize_api_key( $posted );
 		Store::save_service( $service, array( 'api_key' => $key ) );
+		$this->clear_pending_copy( $copy_key );
 		if ( '' === $key ) {
 			$this->redirect( $service, 'empty' );
 		}
@@ -54,19 +65,6 @@ final class Scraping_Settings extends Screen {
 		$this->record_setting_save( __( 'スクレイピング', GACHIREAI_TEXT_DOMAIN ) );
 		$this->redirect( $service, $result['ok'] ? '1' : '0' );
 	}
-	public function handle_switch(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die(
-				esc_html__( 'この操作を行う権限がありません。', GACHIREAI_TEXT_DOMAIN ),
-				esc_html__( 'gachi-review-ai', GACHIREAI_TEXT_DOMAIN ),
-				array( 'response' => 403 )
-			);
-		}
-		check_admin_referer( self::NONCE_SWITCH );
-		$this->apply_common_switch( 'scraping' );
-		wp_safe_redirect( Tabs::url( Tabs::TAB_SCRAPING ) );
-		exit;
-	}
 	private function redirect( string $service, string $result ): void {
 		$url = Tabs::url(
 			Tabs::TAB_SCRAPING,
@@ -80,29 +78,35 @@ final class Scraping_Settings extends Screen {
 	}
 	private function model(): array {
 		return array(
-			'page_title'                => esc_html__( 'スクレイピング', GACHIREAI_TEXT_DOMAIN ),
-			'notices'                   => array(),
-			'tabs'                      => $this->tab_nav(),
-			'common_switch'             => $this->common_switch_model( 'scraping' ),
-			'common_switch_action'      => esc_url( admin_url( 'admin-post.php' ) ),
-			'common_switch_hidden'      => array(
-				array( 'name' => 'action', 'value' => esc_attr( self::ACTION_SWITCH ) ),
-				array( 'name' => '_wpnonce', 'value' => esc_attr( wp_create_nonce( self::NONCE_SWITCH ) ) ),
-			),
-			'common_switch_title'       => esc_html__( '共通設定', GACHIREAI_TEXT_DOMAIN ),
-			'common_switch_description' => esc_html__( 'スクレイピング設定を全サイト共通にするか、このサイト独自の値を使うかを選びます。', GACHIREAI_TEXT_DOMAIN ),
-			'common_switch_save_label'  => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
-			'tag_descriptions'          => Scraping_Legend::model(),
-			'sections'                  => $this->sections_model(),
+			'page_title'       => esc_html__( 'スクレイピング', GACHIREAI_TEXT_DOMAIN ),
+			'notices'          => array(),
+			'tabs'             => $this->tab_nav(),
+			'tag_descriptions' => Scraping_Legend::model(),
+			'sections'         => $this->sections_model(),
 		);
 	}
 	private function sections_model(): array {
-		$store = Store::all();
+		$site   = new Settings();
+		$common = is_multisite() ? new Common_Store() : null;
+		$site_rows   = (array) $site->get( 'scraping.services', array() );
+		$common_rows = null !== $common ? (array) $common->get( 'scraping.services', array() ) : array();
 		$result         = isset( $_GET[ self::RESULT_ARG ] ) ? (string) $_GET[ self::RESULT_ARG ] : '';
 		$result_service = isset( $_GET[ self::SERVICE_ARG ] ) ? sanitize_key( (string) $_GET[ self::SERVICE_ARG ] ) : '';
 		$sections = array();
 		foreach ( Service_Catalog::all() as $id => $definition ) {
-			$row         = $store[ $id ];
+			$copy_key   = 'scraping_' . $id;
+			$use_common = is_multisite() && $site->uses_common_scraping( $id );
+			$pending    = $this->has_pending_copy( $copy_key );
+			$source = ( $use_common || $pending ) ? $common_rows : $site_rows;
+			$row    = isset( $source[ $id ] ) && is_array( $source[ $id ] ) ? $source[ $id ] : array();
+			$row    = array_merge(
+				array(
+					'api_key' => '',
+					'status'  => '',
+					'message' => '',
+				),
+				$row
+			);
 			$status_text = $this->status_text( $row );
 			$messages = array();
 			if ( $result_service === $id && '' !== $result ) {
@@ -112,6 +116,7 @@ final class Scraping_Settings extends Screen {
 				}
 			}
 			$used_by = Scraping_Legend::tags( $id );
+			$switch_use_common = $use_common && ! $pending;
 			$sections[] = array(
 				'section_key'   => esc_attr( 'scraping-' . $id ),
 				'title'         => esc_html( $definition['label'] ),
@@ -136,25 +141,16 @@ final class Scraping_Settings extends Screen {
 				'field_id'      => esc_attr( 'gachireai-scraping-' . $id ),
 				'field_name'    => esc_attr( self::FIELD ),
 				'field_label'   => esc_html__( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-				'field_value'   => esc_attr( $this->mask_api_key( $row['api_key'] ) ),
+				'field_value'   => esc_attr( (string) ( $row['api_key'] ?? '' ) ),
 				'placeholder'   => '',
 				'save_label'    => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
-				'common_target' => is_multisite() ? esc_attr( 'scraping' ) : '',
+				'switch'        => $this->scraping_switch_model( $id, $switch_use_common ),
+				'common_target' => is_multisite() ? esc_attr( $copy_key ) : '',
 				'status_text'   => esc_html( $status_text ),
 				'messages'      => $messages,
 			);
 		}
 		return $sections;
-	}
-	private function mask_api_key( string $api_key ): string {
-		$length = strlen( $api_key );
-		if ( 0 === $length ) {
-			return '';
-		}
-		if ( $length <= 6 ) {
-			return str_repeat( '*', $length );
-		}
-		return substr( $api_key, 0, 3 ) . str_repeat( '*', $length - 6 ) . substr( $api_key, -3 );
 	}
 	private function status_text( array $row ): string {
 		if ( '' === $row['api_key'] ) {

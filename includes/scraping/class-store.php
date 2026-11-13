@@ -8,11 +8,17 @@ final class Store {
 	private const PATH = 'scraping.services';
 	private const KEY_MAX = 500;
 	public static function all(): array {
-		$saved = self::settings()->get( self::PATH, array() );
-		$saved = is_array( $saved ) ? $saved : array();
+		$site        = new Settings();
+		$common      = is_multisite() ? new Common_Store() : null;
+		$site_rows   = $site->get( self::PATH, array() );
+		$site_rows   = is_array( $site_rows ) ? $site_rows : array();
+		$common_rows = null !== $common ? $common->get( self::PATH, array() ) : array();
+		$common_rows = is_array( $common_rows ) ? $common_rows : array();
 		$out = array();
 		foreach ( Service_Catalog::ids() as $id ) {
-			$row = isset( $saved[ $id ] ) && is_array( $saved[ $id ] ) ? $saved[ $id ] : array();
+			$use_common = null !== $common && $site->uses_common_scraping( $id );
+			$source     = $use_common ? $common_rows : $site_rows;
+			$row        = isset( $source[ $id ] ) && is_array( $source[ $id ] ) ? $source[ $id ] : array();
 			$out[ $id ] = array(
 				'api_key'            => isset( $row['api_key'] ) && is_scalar( $row['api_key'] ) ? trim( (string) $row['api_key'] ) : '',
 				'status'             => isset( $row['status'] ) && is_scalar( $row['status'] ) ? (string) $row['status'] : '',
@@ -62,8 +68,8 @@ final class Store {
 		if ( ! Service_Catalog::exists( $id ) ) {
 			return;
 		}
-		$store   = self::settings();
-		$raw     = self::raw();
+		$store   = self::store_for( $id );
+		$raw     = self::raw( $store );
 		$current = isset( $raw[ $id ] ) && is_array( $raw[ $id ] ) ? $raw[ $id ] : array();
 		$raw[ $id ] = array_merge( $current, $fields );
 		$store->set( self::PATH, $raw );
@@ -71,13 +77,13 @@ final class Store {
 	public static function sanitize_api_key( string $key ): string {
 		return mb_substr( trim( sanitize_text_field( $key ) ), 0, self::KEY_MAX );
 	}
-	private static function raw(): array {
-		$saved = self::settings()->get( self::PATH, array() );
+	private static function raw( Settings $store ): array {
+		$saved = $store->get( self::PATH, array() );
 		return is_array( $saved ) ? $saved : array();
 	}
-	private static function settings(): Settings {
+	private static function store_for( string $id ): Settings {
 		$site = new Settings();
-		if ( is_multisite() && $site->uses_common( 'scraping' ) ) {
+		if ( is_multisite() && $site->uses_common_scraping( $id ) ) {
 			return new Common_Store();
 		}
 		return $site;

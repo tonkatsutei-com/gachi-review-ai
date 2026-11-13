@@ -173,9 +173,9 @@ final class Common_Settings extends Screen {
 				array(
 					'api_key' => array(
 						'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-						'type'        => 'password',
+						'type'        => 'text',
 						'max'         => 500,
-						'description' => __( '保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+						'description' => __( 'スクレイピングサービスの API キーです。', GACHIREAI_TEXT_DOMAIN ),
 					),
 				),
 				'',
@@ -219,14 +219,6 @@ final class Common_Settings extends Screen {
 		$keys      = array_keys( $definitions );
 		$display   = $values;
 		$overrides = array();
-		foreach ( $definitions as $key => $definition ) {
-			if ( 'password' !== (string) ( $definition['type'] ?? '' ) ) {
-				continue;
-			}
-			$secret            = isset( $current[ $key ] ) && is_scalar( $current[ $key ] ) ? (string) $current[ $key ] : '';
-			$display[ $key ]   = '';
-			$overrides[ $key ] = array( 'placeholder' => Form::mask_secret( $secret ) );
-		}
 		$override_sites = $this->override_sites( $section );
 		$model = array(
 			'section_key'   => esc_attr( 'common-' . $section ),
@@ -517,7 +509,7 @@ final class Common_Settings extends Screen {
 		$posted  = isset( $_POST['api_key'] ) ? (string) wp_unslash( $_POST['api_key'] ) : '';
 		$rows    = (array) $store->get( 'scraping.services', array() );
 		$current = array( 'api_key' => (string) ( $rows[ $service ]['api_key'] ?? '' ) );
-		$clean = ( new Form( array( 'api_key' => array( 'type' => 'password', 'max' => 500 ) ) ) )->sanitize(
+		$clean = ( new Form( array( 'api_key' => array( 'type' => 'text', 'max' => 500 ) ) ) )->sanitize(
 			array( 'api_key' => $posted ),
 			$current
 		);
@@ -589,9 +581,9 @@ final class Common_Settings extends Screen {
 			),
 			'access_key'     => array(
 				'label'       => __( 'アクセスキー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 300,
-				'description' => __( '保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( '楽天ウェブサービスのアクセスキーです。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'affiliate_id'   => array(
 				'label'       => __( 'アフィリエイトID', GACHIREAI_TEXT_DOMAIN ),
@@ -626,9 +618,9 @@ final class Common_Settings extends Screen {
 			),
 			Amazon_Client::CLIENT_SECRET => array(
 				'label'       => __( 'Credential Secret', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( '保存済みの値は表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( 'Creators API（公式）を使うときの Credential Secret です。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			Amazon_Client::VERSION       => array(
 				'label'       => __( 'Credential version', GACHIREAI_TEXT_DOMAIN ),
@@ -675,9 +667,9 @@ final class Common_Settings extends Screen {
 			),
 			'api_key'  => array(
 				'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( '保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( '記事の生成に使う AI の API キーです。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'model'    => array(
 				'label'       => __( 'モデル', GACHIREAI_TEXT_DOMAIN ),
@@ -691,9 +683,9 @@ final class Common_Settings extends Screen {
 		return array(
 			'api_key' => array(
 				'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( '判定AI（Jev）は安価な有料サービスです（任意設定。Jev（typesafe.ai）で API キーを取得）。保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( '判定AI（Jev）は安価な有料サービスです（任意設定。Jev（typesafe.ai）で API キーを取得）。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'model'   => array(
 				'label'       => __( 'モデル', GACHIREAI_TEXT_DOMAIN ),
@@ -719,9 +711,9 @@ final class Common_Settings extends Screen {
 			),
 			'api_key'    => array(
 				'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( '保存済みのキーは表示されません。変更するときだけ入力してください。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( '画像の生成に使う API キーです。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'model'      => array(
 				'label'       => __( 'モデル', GACHIREAI_TEXT_DOMAIN ),
@@ -745,9 +737,9 @@ final class Common_Settings extends Screen {
 		return array(
 			'api_key' => array(
 				'label'       => __( 'APIキー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( 'YouTube Data API v3 の API キーです。保存済みのキーは表示されません。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( 'YouTube Data API v3 の API キーです。', GACHIREAI_TEXT_DOMAIN ),
 			),
 		);
 	}
@@ -762,9 +754,9 @@ final class Common_Settings extends Screen {
 			),
 			'token'        => array(
 				'label'       => __( 'アクセストークン', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 500,
-				'description' => __( 'read:search スコープのユーザートークンです。保存済みの値は表示されません。', GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( 'read:search スコープのユーザートークンです。', GACHIREAI_TEXT_DOMAIN ),
 			),
 		);
 	}

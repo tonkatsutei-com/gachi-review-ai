@@ -337,17 +337,6 @@ class Get_SNS_Reviews_API
         $state['reset_day'] = isset($services[$service]['reset_day']) ? (int) $services[$service]['reset_day'] : 1;
         return $state;
     }
-    public static function mask_api_key(string $api_key): string
-    {
-        $length = strlen($api_key);
-        if ($length === 0) {
-            return '';
-        }
-        if ($length <= 6) {
-            return str_repeat('*', $length);
-        }
-        return substr($api_key, 0, 3) . str_repeat('*', $length - 6) . substr($api_key, -3);
-    }
     public static function save_service(string $service, array $data): void
     {
         if (!array_key_exists($service, self::services())) {

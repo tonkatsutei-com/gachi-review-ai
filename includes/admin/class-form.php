@@ -64,22 +64,9 @@ final class Form {
 			}
 			$sanitized = in_array( $type, array( 'textarea', 'category' ), true ) ? sanitize_textarea_field( $value ) : sanitize_text_field( $value );
 			$sanitized = mb_substr( $sanitized, 0, (int) ( $definition['max'] ?? 200 ) );
-			if ( 'password' === $type && '' === $sanitized ) {
-				$clean[ $key ] = isset( $current[ $key ] ) && is_scalar( $current[ $key ] ) ? (string) $current[ $key ] : '';
-				continue;
-			}
 			$clean[ $key ] = $sanitized;
 		}
 		return $clean;
-	}
-	public static function mask_secret( string $secret ): string {
-		if ( '' === $secret ) {
-			return '';
-		}
-		if ( mb_strlen( $secret ) <= 6 ) {
-			return str_repeat( '*', 8 );
-		}
-		return mb_substr( $secret, 0, 3 ) . str_repeat( '*', 20 ) . mb_substr( $secret, -3 );
 	}
 	private function build( string $name, string $key, string $value, array $overrides ): array {
 		$definition = array_merge( $this->definitions[ $key ], $overrides );
@@ -91,7 +78,6 @@ final class Form {
 		$is_checkbox_multi = 'checkbox_multi' === $type;
 		$is_category = 'category' === $type;
 		$is_area     = 'textarea' === $type || $is_category;
-		$is_secret   = 'password' === $type;
 		$is_list     = 'datalist' === $type;
 		$is_color    = 'color' === $type;
 		$is_readonly = 'readonly' === $type;
@@ -131,7 +117,7 @@ final class Form {
 			'picker_label'   => esc_html( (string) ( $definition['picker_label'] ?? '' ) ),
 			'picker_clear_label' => esc_html( (string) ( $definition['picker_clear_label'] ?? '' ) ),
 			'picker_target'  => esc_attr( (string) ( $definition['picker_target'] ?? '' ) ),
-			'is_input'       => ! $is_readonly && ! $is_select && ! $is_choice && ! $is_area && ! $is_secret && ! $is_list && ! $is_color && ! $is_cron && ! $is_number && ! $is_image,
+			'is_input'       => ! $is_readonly && ! $is_select && ! $is_choice && ! $is_area && ! $is_list && ! $is_color && ! $is_cron && ! $is_number && ! $is_image,
 			'is_textarea'    => $is_area,
 			'is_select'      => $is_select,
 			'is_radio'       => $is_radio,
@@ -140,7 +126,6 @@ final class Form {
 			'is_checkbox'    => $is_checkbox,
 			'is_checkbox_multi' => $is_checkbox_multi,
 			'is_choice'      => $is_choice,
-			'is_password'    => $is_secret,
 			'is_datalist'    => $is_list,
 			'is_color'       => $is_color,
 			'is_category'    => $is_category,

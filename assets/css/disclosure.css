@@ -1,0 +1,16 @@
+
+.gachireai-disclosure-widget__title {
+	margin: 0 0 0.5rem;
+	font-size: 1.1rem;
+	line-height: 1.4;
+}
+.gachireai-disclosure {
+	font-size: 0.8rem;
+	line-height: 1.6;
+}
+.gachireai-disclosure__item {
+	margin: 0.25rem 0;
+}
+.gachireai-disclosure__item:before {
+	content: "・";
+}

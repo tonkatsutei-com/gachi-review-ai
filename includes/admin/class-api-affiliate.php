@@ -69,6 +69,24 @@ final class Api_Affiliate extends Screen
 		if (wp_doing_ajax()) {
 			return;
 		}
+		if (isset($_POST[self::COPY_FIELD])) {
+			$copy = sanitize_key(wp_unslash((string) $_POST[self::COPY_FIELD]));
+			if (is_multisite()
+				&& in_array($copy, Settings::COMMON_GROUPS, true)
+				&& array_key_exists($copy, self::ACTIONS)) {
+				if (! current_user_can('manage_options')) {
+					wp_die(
+						esc_html__('この操作を行う権限がありません。', GACHIREAI_TEXT_DOMAIN),
+						esc_html__('gachi-review-ai', GACHIREAI_TEXT_DOMAIN),
+						array('response' => 403)
+					);
+				}
+				check_admin_referer(self::NONCE_ACTION);
+				$this->add_pending_copy($copy);
+				wp_safe_redirect(Tabs::url($this->tab_of($copy)));
+				exit;
+			}
+		}
 		if (! isset($_POST[self::ACTION_FIELD])) {
 			return;
 		}
@@ -106,16 +124,16 @@ final class Api_Affiliate extends Screen
 		delete_transient( self::TEST_TRANSIENT_PREFIX . get_current_user_id() );
 		$this->use_common = $this->apply_common_switch($key);
 		if (self::KEY_LLM === $key) {
-			return $this->save_llm_form();
+			return $this->finish_save($key, $this->save_llm_form());
 		}
 		if (self::KEY_JEV === $key) {
-			return $this->save_jev_form();
+			return $this->finish_save($key, $this->save_jev_form());
 		}
 		if (self::KEY_IMAGE === $key) {
-			return $this->save_image_form();
+			return $this->finish_save($key, $this->save_image_form());
 		}
 		if (self::KEY_EC === $key) {
-			return $this->save_ec_form();
+			return $this->finish_save($key, $this->save_ec_form());
 		}
 		$settings = new Settings();
 		$posted   = $this->posted($key);
@@ -142,10 +160,19 @@ final class Api_Affiliate extends Screen
 				Connection_Status::mark_unverified($key, $settings);
 			}
 		}
-		return array(
-			'test'  => $test,
-			'saved' => $saved,
+		return $this->finish_save(
+			$key,
+			array(
+				'test'  => $test,
+				'saved' => $saved,
+			)
 		);
+	}
+	private function finish_save(string $key, array $result): array {
+		if (! empty($result['saved'])) {
+			$this->clear_pending_copy($key);
+		}
+		return $result;
 	}
 	private function save_ec_form(): array
 	{
@@ -671,9 +698,9 @@ final class Api_Affiliate extends Screen
 	{
 		return $key;
 	}
-	private function stored_values(string $key): array
+	private function stored_values(string $key, ?Settings $store = null): array
 	{
-		$settings = new Settings();
+		$settings = $store ?? new Settings();
 		if (self::KEY_LLM === $key) {
 			$entries = $settings->llm_entries();
 			$values  = array('active' => $settings->active_llm_id());
@@ -820,6 +847,9 @@ final class Api_Affiliate extends Screen
 	private function form_fields(string $key, array $block_messages = array(), array $form_messages = array()): array
 	{
 		$values = $this->stored_values($key);
+		if ($this->has_pending_copy($key)) {
+			$values = array_replace($values, $this->stored_values($key, new Common_Store()));
+		}
 		return array(
 			'form_action'    => esc_url(Tabs::url($this->tab_of($key))),
 			'form_id'        => esc_attr('gachireai-form-' . $key),
@@ -870,7 +900,7 @@ final class Api_Affiliate extends Screen
 		if (! is_multisite() || ! in_array($key, Settings::COMMON_GROUPS, true)) {
 			return $overrides;
 		}
-		$use_common = (new Settings())->uses_common($key);
+		$use_common = (new Settings())->uses_common($key) && ! $this->has_pending_copy($key);
 		foreach ($keys as $k) {
 			$overrides[$k] = array_merge((array) ($overrides[$k] ?? array()), array('common_target' => $key));
 			if ($use_common) {
@@ -954,9 +984,6 @@ final class Api_Affiliate extends Screen
 	}
 	private function display_values(string $key, array $values): array
 	{
-		foreach ($this->secret_keys($key) as $secret_key) {
-			$values[$secret_key] = '';
-		}
 		if (self::KEY_AMAZON === $key) {
 			$values[Amazon_Client::VERSION] = Amazon_Client::normalize_version();
 		}
@@ -964,59 +991,7 @@ final class Api_Affiliate extends Screen
 	}
 	private function secret_overrides(string $key, array $values): array
 	{
-		$overrides = array();
-		if (self::KEY_LLM === $key) {
-			$definitions = $this->definitions($key);
-			foreach ($this->secret_keys($key) as $secret_key) {
-				$secret = (string) ($values[$secret_key] ?? '');
-				$has    = '' !== $secret;
-				$note   = (string) ($definitions[$secret_key]['description'] ?? '');
-				$overrides[$secret_key] = array(
-					'placeholder' => $has
-						? Form::mask_secret($secret)
-						: __('値を入力', GACHIREAI_TEXT_DOMAIN),
-					'description' => trim(
-						$note . ' ' . ($has
-							? __('保存した値は再表示できません。', GACHIREAI_TEXT_DOMAIN)
-							: __('現在: 未設定。', GACHIREAI_TEXT_DOMAIN))
-					),
-				);
-			}
-			return $overrides;
-		}
-		if (self::KEY_IMAGE === $key) {
-			$secret = (string) ($values['api_key'] ?? '');
-			$has    = '' !== $secret;
-			$reuse  = '1' === (string) ($values['reuse_llm'] ?? '');
-			$note   = (string) ($this->definitions($key)['api_key']['description'] ?? '');
-			return array(
-				'api_key' => array(
-					'placeholder' => $has
-						? Form::mask_secret($secret)
-						: ($reuse
-							? __('AI設定のキーを使用（値は表示しません）', GACHIREAI_TEXT_DOMAIN)
-							: __('値を入力', GACHIREAI_TEXT_DOMAIN)),
-					'description' => trim(
-						$note . ' ' . ($has
-							? __('保存した値は再表示できません。', GACHIREAI_TEXT_DOMAIN)
-							: __('現在: 未設定。', GACHIREAI_TEXT_DOMAIN))
-					),
-				),
-			);
-		}
-		foreach ($this->secret_keys($key) as $secret_key) {
-			$secret = (string) ($values[$secret_key] ?? '');
-			$has    = ('' !== $secret);
-			$overrides[$secret_key] = array(
-				'placeholder' => $has
-					? Form::mask_secret($secret)
-					: __('値を入力', GACHIREAI_TEXT_DOMAIN),
-				'description' => $has
-					? __('保存した値は再表示できません。', GACHIREAI_TEXT_DOMAIN)
-					: __('現在: 未設定。', GACHIREAI_TEXT_DOMAIN),
-			);
-		}
-		return $overrides;
+		return array();
 	}
 	private function test_rakuten(array $values): array
 	{
@@ -1062,8 +1037,9 @@ final class Api_Affiliate extends Screen
 			$provider = (string) $provider;
 			$definitions['api_key_' . $provider] = array(
 				'label'       => __('API キー', GACHIREAI_TEXT_DOMAIN),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 200,
+				'description' => __('記事の生成に使う AI の API キーです。', GACHIREAI_TEXT_DOMAIN),
 				'row_depends' => array(
 					'on'     => 'llm_provider',
 					'values' => array($provider),
@@ -1101,7 +1077,7 @@ final class Api_Affiliate extends Screen
 			),
 			'api_key' => array(
 				'label'       => __('API キー', GACHIREAI_TEXT_DOMAIN),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 200,
 				'field_disabled' => $disabled,
 				'description' => __('判定AI（Jev）は安価な有料サービスです（任意設定）。API キーは Jev（typesafe.ai）で取得してください。未設定でもレビューの収集・記事生成は行われます。', GACHIREAI_TEXT_DOMAIN),
@@ -1150,10 +1126,10 @@ final class Api_Affiliate extends Screen
 			),
 			'api_key'    => array(
 				'label'       => __('API キー / API トークン', GACHIREAI_TEXT_DOMAIN),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 300,
 				'field_disabled' => $disabled,
-				'description' => __('保存した値は再表示できません。', GACHIREAI_TEXT_DOMAIN),
+				'description' => __('画像の生成に使う API キー（トークン）です。', GACHIREAI_TEXT_DOMAIN),
 				'option_depends'  => 'image_provider',
 				'ec_descriptions' => array(
 					Image_Catalog::CLOUDFLARE => array(
@@ -1324,7 +1300,7 @@ final class Api_Affiliate extends Screen
 		);
 		$definitions[Amazon_Client::CLIENT_SECRET] = array(
 			'label'       => __('Credential Secret', GACHIREAI_TEXT_DOMAIN),
-			'type'        => 'password',
+			'type'        => 'text',
 			'max'         => 200,
 			'description' => __('Credential ID と対になる秘密の値です。', GACHIREAI_TEXT_DOMAIN),
 		);
@@ -1369,7 +1345,7 @@ final class Api_Affiliate extends Screen
 			),
 			'access_key'     => array(
 				'label'       => __('アクセスキー', GACHIREAI_TEXT_DOMAIN),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 200,
 				'description' => __('楽天ウェブサービスのアクセスキーです。', GACHIREAI_TEXT_DOMAIN),
 			),

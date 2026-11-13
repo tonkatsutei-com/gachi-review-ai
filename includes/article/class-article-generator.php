@@ -820,15 +820,9 @@ final class Article_Generator {
 				Card_Settings::positions( $this->settings )
 			);
 		}
-		$disclosure_top  = Disclosure_Shortcode::block( Settings::DISCLOSURE_POSITION_TOP );
 		$eyecatch_prefix = Eyecatch_Shortcode::prefix_blocks();
-		$prefix_blocks   = array_filter( array( $disclosure_top, $eyecatch_prefix ), 'strlen' );
-		if ( array() !== $prefix_blocks ) {
-			$content = implode( "\n\n", $prefix_blocks ) . "\n\n" . $content;
-		}
-		$disclosure_bottom = Disclosure_Shortcode::block( Settings::DISCLOSURE_POSITION_BOTTOM );
-		if ( '' !== $disclosure_bottom ) {
-			$content = $content . "\n\n" . $disclosure_bottom;
+		if ( '' !== $eyecatch_prefix ) {
+			$content = $eyecatch_prefix . "\n\n" . $content;
 		}
 		Generate_Progress::update( get_current_user_id(), __( '記事を保存中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_SAVE, Generate_Progress::STEP_TOTAL );
 		$slug = self::post_slug( $article );

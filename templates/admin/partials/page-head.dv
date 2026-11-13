@@ -1,5 +1,5 @@
 <div class="gachireai-loading" role="status" aria-label="読み込み中">
-	<span class="dashicons dashicons-update" aria-hidden="true"></span>
+	<span class="dashicons dashicons-minus"></span>
 </div>
 <header class="gachireai-page-head">
 	<h1 class="gachireai-page-head__title">{$page_title}</h1>

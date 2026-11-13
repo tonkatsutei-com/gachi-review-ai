@@ -7,3 +7,11 @@ $checkboxes?
 ?$description
 <p class="description">{$description}</p>
 $description?
+?$copy_visible
+<div class="gachireai-copy-common">
+	<button type="submit" class="button" name="{$copy_name}" value="{$copy_value}" ?$copy_disabled disabled$copy_disabled? data-gachireai-copy-switch="{$copy_switch}">{$copy_label}</button>
+	?$copy_description
+	<p class="description">{$copy_description}</p>
+	$copy_description?
+</div>
+$copy_visible?

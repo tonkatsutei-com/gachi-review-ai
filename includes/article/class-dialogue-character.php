@@ -8,6 +8,7 @@ use Tonkatsutei\Gachi_Review_AI\Image\Processor;
 use Tonkatsutei\Gachi_Review_AI\Image\Prompt_Builder;
 use Tonkatsutei\Gachi_Review_AI\Llm\Manager as Llm_Manager;
 use Tonkatsutei\Gachi_Review_AI\Settings;
+use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Generator;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 final class Dialogue_Character {
 	private const SIZE = 512;
@@ -132,7 +133,7 @@ final class Dialogue_Character {
 		$data        = Llm_Manager::generate_json(
 			$provider,
 			self::system_prompt(),
-			self::user_prompt( $target, $mentor_name ),
+			self::user_prompt( $target, $mentor_name, Site_Generator::random_name_style() ),
 			array(
 				'temperature' => 0.9,
 				'max_tokens'  => 500,
@@ -156,17 +157,17 @@ final class Dialogue_Character {
 				'あなたは日本語のアフィリエイトサイトの編集者です。',
 				'与えられた「読者（ターゲットペルソナ）」の情報から、記事の対話に登場する「メンティー」（読者側のキャラクター）を作ります。',
 				'必ず次のキーだけを持つ JSON オブジェクトを返してください: ' . implode( ', ', self::KEYS ),
-				'name は日本語の自然な呼び名（例: ミサキ、ケンタ）にしてください（20 文字以内）。',
+				'name は日本語の自然な呼び名にしてください（20 文字以内）。ありふれた名前（タカシ・ミサキ・ケンタ・タロウ・ハナコなど）は使わず、読者像に合う個性的な呼び名にしてください。',
 				'記事の語り手（メンター）とは別の人物にし、メンターの名前は使わないでください。',
 				'gender は「女性」「男性」「その他」のいずれかにしてください。',
-				'age は「20代」「30代」のような年代にしてください（10 文字以内）。',
-				'tone は話し方・口調（例: です・ます調で丁寧、砕けた口語）を 40 文字以内で書いてください。',
+				'age は「20代」「30代」のような年代表記にしてください（10 文字以内）。特定の年代に偏らないようにしてください。',
+				'tone は話し方・口調を 40 文字以内で書いてください（丁寧・砕けた・フランクなど、読者像に合うものを選ぶ）。',
 				'ターゲットペルソナの属性・悩み・求める情報に矛盾しない人物にしてください。',
 				'情報が足りない部分は、自然に補完してください（誇張・虚偽は書かない）。',
 			)
 		);
 	}
-	private static function user_prompt( array $target, string $avoid_name = '' ): string {
+	private static function user_prompt( array $target, string $avoid_name = '', string $name_style = '' ): string {
 		$keyed = array(
 			'attributes'        => '属性',
 			'worries'           => '悩み・課題',
@@ -183,10 +184,13 @@ final class Dialogue_Character {
 			}
 		}
 		if ( 1 === count( $lines ) ) {
-			$lines[] = '（情報がありません。30代の会社員で、商品選びに迷っている人物を作ってください。）';
+			$lines[] = '（読者の情報がありません。サイトの内容に合う、商品選びに迷っている人物を自然に想定してください。）';
 		}
 		if ( '' !== $avoid_name ) {
 			$lines[] = '※ 記事の語り手（メンター）の名前「' . $avoid_name . '」は使わず、必ず別の名前を 1 つ作ってください。';
+		}
+		if ( '' !== trim( $name_style ) ) {
+			$lines[] = '今回の name は「' . $name_style . '」の系統で、読者像に合う個性的な呼び名を 1 つ作ってください。';
 		}
 		$lines[] = '上の読者像から、メンティー（読者のキャラクター）を JSON で作成してください。';
 		return implode( "\n", $lines );

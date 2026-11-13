@@ -4,6 +4,7 @@ namespace Tonkatsutei\Gachi_Review_AI\Admin;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Article\Ai_Review;
 use Tonkatsutei\Gachi_Review_AI\Article\Source_Settings;
+use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Ec\Ec_Review_Use;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Fivech\Fivech_Client;
@@ -60,6 +61,16 @@ final class Data_Setup extends Screen {
 			);
 		}
 		check_admin_referer( self::NONCE_ACTION );
+		if ( isset( $_POST[ self::COPY_FIELD ] ) ) {
+			$copy = sanitize_key( wp_unslash( (string) $_POST[ self::COPY_FIELD ] ) );
+			if ( is_multisite()
+				&& in_array( $copy, Settings::COMMON_GROUPS, true )
+				&& in_array( $copy, $this->groups(), true ) ) {
+				$this->add_pending_copy( $copy );
+				wp_safe_redirect( Tabs::url( Tabs::TAB_REVIEW ) );
+				exit;
+			}
+		}
 		$this->save();
 		wp_safe_redirect( Tabs::url( Tabs::TAB_REVIEW, array( self::SAVED_ARG => '1' ) ) );
 		exit;
@@ -169,6 +180,9 @@ final class Data_Setup extends Screen {
 		foreach ( $this->groups() as $group ) {
 			$this->apply_common_switch( $group );
 		}
+		foreach ( $this->groups() as $group ) {
+			$this->clear_pending_copy( $group );
+		}
 		$settings = new Settings();
 		foreach ( $this->groups() as $group ) {
 			if ( $settings->uses_common( $group ) ) {
@@ -272,6 +286,12 @@ final class Data_Setup extends Screen {
 				$values[ $group ] = (array) $settings->get( $group, array() );
 			}
 		}
+		$common_store = new Common_Store();
+		foreach ( $groups as $group ) {
+			if ( $this->has_pending_copy( $group ) ) {
+				$values[ $group ] = array_merge( (array) ( $values[ $group ] ?? array() ), (array) $common_store->get( $group, array() ) );
+			}
+		}
 		foreach ( $groups as $group ) {
 			$values[ $group ] = array_merge( (array) ( $values[ $group ] ?? array() ), (array) ( $pending[ $group ] ?? array() ) );
 		}
@@ -306,24 +326,16 @@ final class Data_Setup extends Screen {
 		$rewrite    = (array) ( $values[ self::REWRITE_GROUP ] ?? array() );
 		$youtube_overrides  = array();
 		$mastodon_overrides = array();
-		if ( '' !== trim( (string) ( $youtube['api_key'] ?? '' ) ) ) {
-			$youtube_overrides['api_key'] = array( 'placeholder' => Form::mask_secret( (string) $youtube['api_key'] ) );
-		}
-		$youtube['api_key'] = '';
-		if ( '' !== trim( (string) ( $mastodon['token'] ?? '' ) ) ) {
-			$mastodon_overrides['token'] = array( 'placeholder' => Form::mask_secret( (string) $mastodon['token'] ) );
-		}
-		$mastodon['token'] = '';
 		if ( is_multisite() ) {
 			$settings = new Settings();
 			$youtube_overrides['api_key'] = array_merge( (array) ( $youtube_overrides['api_key'] ?? array() ), array( 'common_target' => self::YOUTUBE_GROUP ) );
 			foreach ( array( 'instance', 'token' ) as $field ) {
 				$mastodon_overrides[ $field ] = array_merge( (array) ( $mastodon_overrides[ $field ] ?? array() ), array( 'common_target' => self::MASTODON_GROUP ) );
 			}
-			if ( $settings->uses_common( self::YOUTUBE_GROUP ) ) {
+			if ( $settings->uses_common( self::YOUTUBE_GROUP ) && ! $this->has_pending_copy( self::YOUTUBE_GROUP ) ) {
 				$youtube_overrides['api_key'] = array_merge( $youtube_overrides['api_key'], array( 'field_disabled' => true ) );
 			}
-			if ( $settings->uses_common( self::MASTODON_GROUP ) ) {
+			if ( $settings->uses_common( self::MASTODON_GROUP ) && ! $this->has_pending_copy( self::MASTODON_GROUP ) ) {
 				foreach ( array( 'instance', 'token' ) as $field ) {
 					$mastodon_overrides[ $field ] = array_merge( $mastodon_overrides[ $field ], array( 'field_disabled' => true ) );
 				}
@@ -777,7 +789,7 @@ final class Data_Setup extends Screen {
 		return array(
 			'api_key'   => array(
 				'label'       => __( 'API キー', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 200,
 				'placeholder' => __( 'YouTube Data API v3 の API キー', GACHIREAI_TEXT_DOMAIN ),
 				'description' => __( 'Google Cloud で「YouTube Data API v3」を有効にして発行した API キーを貼り付けます。', GACHIREAI_TEXT_DOMAIN ),
@@ -838,7 +850,7 @@ final class Data_Setup extends Screen {
 			),
 			'token'         => array(
 				'label'       => __( 'アクセストークン', GACHIREAI_TEXT_DOMAIN ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'max'         => 200,
 				'placeholder' => __( 'read:search スコープのアクセストークン', GACHIREAI_TEXT_DOMAIN ),
 				'description' => __( 'Mastodon の「開発」で作成したアプリのアクセストークン（read:search）を貼り付けます。', GACHIREAI_TEXT_DOMAIN ),

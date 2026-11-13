@@ -28,7 +28,9 @@ final class Sister_Sites_Widget extends \WP_Widget
 		if (array() === $sites) {
 			return;
 		}
-		$title = isset($instance['title']) ? (string) $instance['title'] : '';
+		$title = ( is_array( $instance ) && array_key_exists( 'title', $instance ) )
+			? (string) $instance['title']
+			: __( '姉妹サイト', GACHIREAI_TEXT_DOMAIN );
 		$html  = Sister_Sites::render($title, $sites);
 		if ('' === $html) {
 			return;

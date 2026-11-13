@@ -1,0 +1,11 @@
+
+?$has_title
+<h2 class="gachireai-disclosure-widget__title">{$title}</h2>
+$has_title?
+?$disclosure_items
+<div class="gachireai-disclosure">
+	[$disclosure_items]
+	<p class="gachireai-disclosure__item">{$text}</p>
+	[/$disclosure_items]
+</div>
+$disclosure_items?

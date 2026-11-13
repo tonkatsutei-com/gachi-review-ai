@@ -15,6 +15,7 @@ use Tonkatsutei\Gachi_Review_AI\Sitemap\Sitemap;
 use Tonkatsutei\Gachi_Review_AI\Top\Ogp;
 use Tonkatsutei\Gachi_Review_AI\Top\Top_Page_Shortcode;
 use Tonkatsutei\Gachi_Review_AI\Update\Update_Checker;
+use Tonkatsutei\Gachi_Review_AI\Widget\Disclosure;
 use Tonkatsutei\Gachi_Review_AI\Widget\Sister_Sites;
 final class Plugin {
 	private static ?Plugin $instance = null;
@@ -49,7 +50,9 @@ final class Plugin {
 		add_action( 'admin_init', array( Activator::class, 'migrate_review_common_settings' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_review_sources' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_common_overrides' ) );
+		add_action( 'admin_init', array( Activator::class, 'migrate_scraping_overrides' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_disclosure' ) );
+		add_action( 'admin_init', array( Activator::class, 'migrate_disclosure_widget' ) );
 		add_action( 'admin_init', array( Activator::class, 'migrate_verified_records' ) );
 		Auto_Post_Scheduler::register_hooks();
 		add_action( 'admin_init', array( Auto_Post_Scheduler::class, 'sync' ) );
@@ -63,6 +66,7 @@ final class Plugin {
 		Top_Page_Shortcode::register();
 		Ogp::register();
 		Sister_Sites::register();
+		Disclosure::register();
 		Sitemap::register();
 		Update_Checker::register();
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_front_assets' ) );

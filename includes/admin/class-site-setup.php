@@ -22,6 +22,7 @@ use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Generator;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 use Tonkatsutei\Gachi_Review_AI\Top\Top_Page;
+use Tonkatsutei\Gachi_Review_AI\Widget\Disclosure;
 final class Site_Setup extends Screen {
 	public const ACTION = 'save_persona';
 	private const NONCE_ACTION = 'gachireai_save_persona';
@@ -215,29 +216,66 @@ final class Site_Setup extends Screen {
 		check_admin_referer( self::NONCE_ACTION_DISCLOSURE );
 		$settings = new Settings();
 		$posted   = $this->posted_array( self::DISCLOSURE_GROUP ) ?? array();
-		$current  = $settings->disclosure();
-		$flat     = array();
-		foreach ( $current as $key => $item ) {
-			$flat[ $key . '_enabled' ]  = $item['enabled'];
-			$flat[ $key . '_position' ] = $item['position'];
-			$flat[ $key . '_text' ]     = $item['text'];
+		$flat     = array(
+			'heading' => $settings->disclosure_heading(),
+		);
+		foreach ( $settings->disclosure() as $key => $item ) {
+			$flat[ $key . '_enabled' ] = $item['enabled'];
+			$flat[ $key . '_text' ]    = $item['text'];
+		}
+		foreach ( $settings->image_annotation() as $key => $item ) {
+			$flat[ $key . '_enabled' ] = $item['enabled'];
+			$flat[ $key . '_text' ]    = $item['text'];
 		}
 		$form  = new Form( $this->disclosure_definitions() );
 		$clean = $form->sanitize( $posted, $flat );
+		$old_heading = $settings->disclosure_heading();
 		$settings->set( self::DISCLOSURE_GROUP, $clean );
 		$this->record_setting_save( __( '開示', GACHIREAI_TEXT_DOMAIN ) );
+		$new_heading = $settings->disclosure_heading();
+		if ( $new_heading !== $old_heading ) {
+			Disclosure::sync_titles( $new_heading );
+		}
+		Disclosure::purge_caches();
+		if ( self::has_enabled_widget_item( $clean ) ) {
+			Disclosure::ensure_installed();
+		}
 		wp_safe_redirect( Tabs::url( Tabs::TAB_SITE, array( 'gachireai_disclosure_saved' => '1' ) ) . '#gachireai-section-disclosure' );
 		exit;
 	}
+	private static function has_enabled_widget_item( array $clean ): bool {
+		foreach ( Settings::DISCLOSURE_KEYS as $key ) {
+			if ( '1' === (string) ( $clean[ $key . '_enabled' ] ?? '' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
 	private function disclosure_definitions(): array {
-		$items = array(
+		$widget_items = array(
 			'affiliate' => __( 'アフィリエイト', GACHIREAI_TEXT_DOMAIN ),
-			'image'     => __( 'AI生成画像', GACHIREAI_TEXT_DOMAIN ),
 			'review'    => __( 'AIレビュー', GACHIREAI_TEXT_DOMAIN ),
 			'article'   => __( 'AI生成記事', GACHIREAI_TEXT_DOMAIN ),
 		);
-		$definitions = array();
-		foreach ( $items as $key => $label ) {
+		$annotation_items = array(
+			'image_top'     => array(
+				'label'    => __( 'AI生成画像（トップページ）', GACHIREAI_TEXT_DOMAIN ),
+				'checkbox' => __( 'トップページのトップ画の下に表示する', GACHIREAI_TEXT_DOMAIN ),
+			),
+			'image_article' => array(
+				'label'    => __( 'AI生成画像（個別記事）', GACHIREAI_TEXT_DOMAIN ),
+				'checkbox' => __( '個別記事のトップ画の下に表示する', GACHIREAI_TEXT_DOMAIN ),
+			),
+		);
+		$definitions = array(
+			'heading' => array(
+				'label'       => __( 'ウィジェットタイトル', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'text',
+				'max'         => 100,
+				'placeholder' => Settings::DISCLOSURE_DEFAULT_HEADING,
+			),
+		);
+		foreach ( $widget_items as $key => $label ) {
 			$definitions[ $key . '_enabled' ] = array(
 				'label'   => sprintf(
 					__( '%sの開示', GACHIREAI_TEXT_DOMAIN ),
@@ -245,15 +283,6 @@ final class Site_Setup extends Screen {
 				),
 				'type'    => 'checkbox',
 				'options' => array( '1' => __( '表示する', GACHIREAI_TEXT_DOMAIN ) ),
-			);
-			$definitions[ $key . '_position' ] = array(
-				'label'   => __( '表示位置', GACHIREAI_TEXT_DOMAIN ),
-				'type'    => 'radio',
-				'options' => array(
-					Settings::DISCLOSURE_POSITION_TOP    => __( '記事冒頭', GACHIREAI_TEXT_DOMAIN ),
-					Settings::DISCLOSURE_POSITION_BOTTOM => __( '記事末尾', GACHIREAI_TEXT_DOMAIN ),
-				),
-				'default' => Settings::DISCLOSURE_POSITION_TOP,
 			);
 			$definitions[ $key . '_text' ] = array(
 				'label'       => __( '開示文', GACHIREAI_TEXT_DOMAIN ),
@@ -263,38 +292,104 @@ final class Site_Setup extends Screen {
 				'placeholder' => Settings::DISCLOSURE_DEFAULT_TEXTS[ $key ],
 			);
 		}
+		foreach ( $annotation_items as $key => $item ) {
+			$definitions[ $key . '_enabled' ] = array(
+				'label'   => $item['label'],
+				'type'    => 'checkbox',
+				'options' => array( '1' => $item['checkbox'] ),
+			);
+			$definitions[ $key . '_text' ] = array(
+				'label'       => __( '注釈文', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'textarea',
+				'rows'        => 2,
+				'max'         => 300,
+				'placeholder' => Settings::IMAGE_ANNOTATION_DEFAULT_TEXTS[ $key ],
+			);
+		}
 		return $definitions;
 	}
 	private function disclosure_blocks(): array {
-		$settings = new Settings();
-		$values   = array();
-		foreach ( $settings->disclosure() as $key => $item ) {
-			$values[ $key . '_enabled' ]  = $item['enabled'];
-			$values[ $key . '_position' ] = $item['position'];
-			$values[ $key . '_text' ]     = $item['text'];
-		}
-		$form   = new Form( $this->disclosure_definitions() );
-		$labels = array(
+		$settings   = new Settings();
+		$disclosure = $settings->disclosure();
+		$annotation = $settings->image_annotation();
+		$widget_labels = array(
 			'affiliate' => __( 'アフィリエイト', GACHIREAI_TEXT_DOMAIN ),
-			'image'     => __( 'AI生成画像', GACHIREAI_TEXT_DOMAIN ),
 			'review'    => __( 'AIレビュー', GACHIREAI_TEXT_DOMAIN ),
 			'article'   => __( 'AI生成記事', GACHIREAI_TEXT_DOMAIN ),
 		);
-		$blocks = array();
-		foreach ( $labels as $key => $label ) {
-			$blocks[] = array(
-				'block_key'      => 'disclosure_' . $key,
-				'block_title'    => esc_html( $label ),
-				'fields'         => $form->build_list(
-					$values,
-					array( $key . '_enabled', $key . '_position', $key . '_text' ),
-					self::DISCLOSURE_GROUP
-				),
-				'block_buttons'  => array(),
-				'block_messages' => array(),
+		$widget_rows   = array(
+			array(
+				'has_th'         => true,
+				'th_label'       => esc_html__( 'ウィジェットタイトル', GACHIREAI_TEXT_DOMAIN ),
+				'is_input'       => true,
+				'is_item'        => false,
+				'input_name'     => esc_attr( self::DISCLOSURE_GROUP . '[heading]' ),
+				'input_value'    => esc_attr( $settings->disclosure_heading() ),
+				'checkbox_name'  => '',
+				'checkbox_label' => '',
+				'checked'        => false,
+				'text_name'      => '',
+				'text_value'     => '',
+				'placeholder'    => esc_attr( Settings::DISCLOSURE_DEFAULT_HEADING ),
+			),
+		);
+		foreach ( $widget_labels as $key => $label ) {
+			$widget_rows[] = $this->disclosure_item_row(
+				$key,
+				$label,
+				__( '表示する', GACHIREAI_TEXT_DOMAIN ),
+				$disclosure[ $key ]['enabled'],
+				$disclosure[ $key ]['text'],
+				Settings::DISCLOSURE_DEFAULT_TEXTS[ $key ]
 			);
 		}
-		return $blocks;
+		$annotation_rows = array(
+			$this->disclosure_item_row(
+				'image_top',
+				__( 'トップページ', GACHIREAI_TEXT_DOMAIN ),
+				__( '画像の下に表示する', GACHIREAI_TEXT_DOMAIN ),
+				$annotation['image_top']['enabled'],
+				$annotation['image_top']['text'],
+				Settings::IMAGE_ANNOTATION_DEFAULT_TEXTS['image_top']
+			),
+			$this->disclosure_item_row(
+				'image_article',
+				__( '個別記事', GACHIREAI_TEXT_DOMAIN ),
+				__( '画像の下に表示する', GACHIREAI_TEXT_DOMAIN ),
+				$annotation['image_article']['enabled'],
+				$annotation['image_article']['text'],
+				Settings::IMAGE_ANNOTATION_DEFAULT_TEXTS['image_article']
+			),
+		);
+		return array(
+			array(
+				'block_key'   => 'disclosure_widget',
+				'block_title' => esc_html__( '開示ウィジェット', GACHIREAI_TEXT_DOMAIN ),
+				'rows'        => $widget_rows,
+			),
+			array(
+				'block_key'   => 'disclosure_image_annotation',
+				'block_title' => esc_html__( '画像注釈', GACHIREAI_TEXT_DOMAIN ),
+				'rows'        => $annotation_rows,
+			),
+		);
+	}
+	private function disclosure_item_row( string $key, string $th_label, string $checkbox_label, string $enabled, string $text, string $placeholder ): array {
+		$prefix = self::DISCLOSURE_GROUP . '[' . $key;
+		return array(
+			'has_th'         => true,
+			'th_label'       => esc_html( $th_label ),
+			'is_input'       => false,
+			'is_item'        => true,
+			'input_name'     => '',
+			'input_value'    => '',
+			'checkbox_name'  => esc_attr( $prefix . '_enabled]' ),
+			'checkbox_label' => esc_html( $checkbox_label ),
+			'checked'        => '1' === $enabled,
+			'text_name'      => esc_attr( $prefix . '_text]' ),
+			'text_value'     => esc_html( $text ),
+			'placeholder'    => esc_attr( $placeholder ),
+		);
 	}
 	public function maybe_save_elements(): void {
 		if ( wp_doing_ajax() ) {
@@ -1536,7 +1631,7 @@ final class Site_Setup extends Screen {
 			),
 			'disclosure_anchor'        => esc_attr( 'disclosure' ),
 			'disclosure_title'         => esc_html__( '開示', GACHIREAI_TEXT_DOMAIN ),
-			'disclosure_intro'         => esc_html__( "アフィリエイト広告・AI生成コンテンツであることを記事に表示します。\n表示ONの場合、選んだ位置（記事冒頭／記事末尾）に表示します。", GACHIREAI_TEXT_DOMAIN ),
+			'disclosure_intro'         => esc_html__( "アフィリエイト広告・AI生成コンテンツであることを「開示ウィジェット」にまとめて表示します。\n表示ONの項目だけを 1 つのウィジェットに出します（初期値はすべて表示）。\n画像注釈は、トップページ・個別記事のトップ画の下に表示します。", GACHIREAI_TEXT_DOMAIN ),
 			'disclosure_blocks'        => $this->disclosure_blocks(),
 			'disclosure_messages'      => isset( $_GET['gachireai_disclosure_saved'] )
 				? array( $this->message( 'success', esc_html__( '保存しました。', GACHIREAI_TEXT_DOMAIN ) ) )

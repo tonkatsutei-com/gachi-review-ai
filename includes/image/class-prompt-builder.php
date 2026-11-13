@@ -34,7 +34,7 @@ final class Prompt_Builder {
 		$copy     = '1' === $image['text_overlay']
 			? sprintf( 'Leave the %s 50%% of the frame as clean, uncluttered negative space for a headline.', $side )
 			: 'Use a clean, uncluttered composition with generous negative space.';
-		$fallback = 'A calm, sunlit Japanese home interior showing the benefit of a better daily routine, a person enjoying the result in the background (hands or back view only, no face), natural window light, soft neutral tones, clean copy space on the ' . $side . ', editorial lifestyle photography, authentic and not advertising-like. ' . $style_en;
+		$fallback = 'A calm, inviting everyday scene showing the benefit of a better daily routine, a person enjoying the result in the background (hands or back view only, no face), soft natural daylight, warm muted tones, natural textures, clean copy space on the ' . $side . ', editorial lifestyle photography, authentic and not advertising-like. ' . $style_en;
 		$product_name = self::clean( (string) ( $product['product_name'] ?? '' ), 80 );
 		$title        = self::clean( $title, 120 );
 		$context      = $this->site_context();
@@ -45,6 +45,7 @@ final class Prompt_Builder {
 			. "- Describe the BENEFIT / after-state the reader wants, not the product itself.\n"
 			. "- Do not depict the product precisely. No packaging, no brand logos, no packshots.\n"
 			. "- NEVER include brand names, product names, model numbers, or trademarks in the prompt (they can trigger the image AI's safety filter and force a generic fallback).\n"
+			. "- Vary the setting: do NOT default to a bright white room by a window. Choose a setting that fits the benefit (outdoors, a close-up of hands, a tabletop detail, or an abstract background).\n"
 			. "- If a person appears, show only hands, a back view, or a silhouette of a grown-up person. No identifiable face.\n"
 			. "- {$copy}\n"
 			. "- Natural, candid, editorial lifestyle mood (Instagram / Pinterest / magazine), not a sales banner.\n"
@@ -77,12 +78,13 @@ final class Prompt_Builder {
 		$image    = $this->settings->image();
 		$style_en = $this->effective_style_prompt( $image );
 		$context  = $this->site_context();
-		$fallback = 'A calm, inviting editorial hero image for a Japanese product review website, a tidy modern lifestyle scene with natural window light, soft neutral tones, generous negative space, authentic magazine mood, not advertising-like. ' . $style_en;
+		$fallback = 'A calm, inviting editorial hero image for a Japanese product review website, a harmonious everyday scene with soft natural daylight, warm muted tones, natural textures, generous negative space, authentic magazine mood, not advertising-like. ' . $style_en;
 		$user = "Website context:\n{$context}\n\n"
 			. "Requirements:\n"
 			. "- A hero image that represents the WHOLE website (a lifestyle scene, not a product).\n"
 			. "- Do not depict products precisely. No packaging, no brand logos, no packshots, no price tags, no banners.\n"
 			. "- NEVER include brand names, product names, model numbers, or trademarks in the prompt (they can trigger the image AI's safety filter and force a generic fallback).\n"
+			. "- Vary the setting: do NOT default to a bright white room by a window. Choose a setting that expresses the site's world (outdoors, a close-up of hands, a tabletop detail, or an abstract background).\n"
 			. "- If a person appears, show only hands, a back view, or a silhouette of a grown-up person. No identifiable face.\n"
 			. "- Natural, candid, editorial lifestyle mood (Instagram / Pinterest / magazine), not a sales banner.\n"
 			. "- Leave generous clean space so the image works as a wide hero image.\n"
@@ -179,16 +181,18 @@ final class Prompt_Builder {
 		);
 	}
 	private static function safe_scene( string $style ): string {
-		switch ( Image_Catalog::normalize_style( $style ) ) {
-			case Image_Catalog::STYLE_3D:
-				return 'A minimal 3D rendered lifestyle scene of a calm, tidy modern room with soft clay textures, pastel colors, gentle shadows, and a sense of everyday comfort';
-			case Image_Catalog::STYLE_FLAT:
-				return 'A flat vector illustration of a calm, tidy modern lifestyle scene with simple bold shapes, a limited palette, and a friendly, clear mood';
-			case Image_Catalog::STYLE_EDITORIAL:
-				return 'A minimal editorial lifestyle scene with soft neutral tones, clean composition, and a calm, sophisticated sense of everyday comfort';
-			case Image_Catalog::STYLE_CINEMATIC:
+		switch ( Image_Catalog::family_of( $style ) ) {
+			case Image_Catalog::FAMILY_ILLUSTRATION:
+				return 'A flat vector illustration of a cheerful everyday scene with simple bold shapes, a limited palette, layered plants and playful shapes, and a friendly, clear mood';
+			case Image_Catalog::FAMILY_3DCG:
+				return 'A minimal 3D rendered scene of soft geometric shapes, plants, and gentle shadows in a calm pastel palette, modern and friendly';
+			case Image_Catalog::FAMILY_ANIME:
+				return 'A soft anime-style illustration of a quiet outdoor path with layered greenery, gentle afternoon colors, and a calm nostalgic mood';
+			case Image_Catalog::FAMILY_PAINT:
+				return 'A loose watercolor painting of a tranquil outdoor scene with soft washes, warm muted colors, and a calm artistic mood';
+			case Image_Catalog::FAMILY_PHOTOREAL:
 			default:
-				return 'A cinematic lifestyle scene of a calm, tidy modern room with natural window light, warm tones, and a sense of everyday comfort';
+				return 'A candid close-up of hands preparing a fresh drink on a wooden counter, shallow depth of field, soft natural daylight, warm muted tones, and a calm everyday mood';
 		}
 	}
 	private static function gender_key( string $gender ): string {

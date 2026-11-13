@@ -177,6 +177,10 @@
 				row.classList.remove( 'gachireai-field--disabled' );
 			}
 		}
+		var copy_buttons = document.querySelectorAll( '[data-gachireai-copy-switch="' + group + '"]' );
+		for ( var k = 0; k < copy_buttons.length; k++ ) {
+			copy_buttons[ k ].disabled = use_common;
+		}
 	}
 	function sync_all_common_switches() {
 		var switches = document.querySelectorAll( '[data-gachireai-common-switch]' );

@@ -1,31 +1,6 @@
 <div class="wrap gachireai-admin">
 	{% partials/page-head.dv %}
 	{% partials/tabs.dv %}
-	?$common_switch
-	<section class="gachireai-section" id="gachireai-section-scraping-common">
-		<header class="gachireai-section__header">
-			<h2 class="gachireai-section__title">{$common_switch_title}</h2>
-			?$common_switch_description
-			<p class="gachireai-section__desc">{$common_switch_description}</p>
-			$common_switch_description?
-		</header>
-		<div class="gachireai-section__main">
-			<form method="post" action="{$common_switch_action}">
-				?$common_switch_hidden
-				[$common_switch_hidden]
-				<input type="hidden" name="{$name}" value="{$value}">
-				[/$common_switch_hidden]
-				$common_switch_hidden?
-				<div class="gachireai-section__switch">
-					[$common_switch]
-					{% partials/field-inline.dv %}
-					[/$common_switch]
-				</div>
-				<p class="submit"><button type="submit" class="button button-primary">{$common_switch_save_label}</button></p>
-			</form>
-		</div>
-	</section>
-	$common_switch?
 	{% partials/scraping-legend.dv %}
 	?$sections
 	[$sections]
@@ -38,6 +13,13 @@
 				<input type="hidden" name="{$name}" value="{$value}">
 				[/$hidden_fields]
 				$hidden_fields?
+				?$switch
+				<div class="gachireai-section__switch">
+					[$switch]
+					{% partials/field-inline.dv %}
+					[/$switch]
+				</div>
+				$switch?
 				<table class="form-table" role="presentation">
 					<tr class="gachireai-field" ?$common_target data-gachireai-common-target="{$common_target}"$common_target?>
 						<th scope="row"><label for="{$field_id}">{$field_label}</label></th>

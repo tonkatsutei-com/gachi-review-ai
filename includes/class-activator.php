@@ -7,7 +7,9 @@ use Tonkatsutei\Gachi_Review_AI\Article\Source_Settings;
 use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
+use Tonkatsutei\Gachi_Review_AI\Scraping\Service_Catalog;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
+use Tonkatsutei\Gachi_Review_AI\Widget\Disclosure;
 final class Activator {
 	public static function activate( bool $network_wide = false ): void {
 		self::check_environment();
@@ -20,6 +22,7 @@ final class Activator {
 		self::migrate_product_exclude_schema();
 		self::migrate_drop_keyword_stock();
 		self::set_default_options();
+		Disclosure::ensure_installed();
 		Retention_Cleaner::schedule();
 	}
 	public static function activate_new_site( \WP_Site $new_site ): void {
@@ -45,6 +48,7 @@ final class Activator {
 			self::migrate_product_exclude_schema();
 			self::migrate_drop_keyword_stock();
 			self::set_default_options();
+			Disclosure::ensure_installed();
 			Retention_Cleaner::schedule();
 		} finally {
 			if ( $switched ) {
@@ -214,6 +218,16 @@ final class Activator {
 		}
 		$settings->set( 'common_overrides', $settings->common_overrides() );
 	}
+	public static function migrate_scraping_overrides(): void {
+		$settings = new Settings();
+		$all      = $settings->all();
+		if ( array_key_exists( 'scraping_overrides', $all ) ) {
+			return;
+		}
+		$legacy    = $all['common_overrides'] ?? null;
+		$used_site = is_array( $legacy ) && in_array( 'scraping', $legacy, true );
+		$settings->set( 'scraping_overrides', $used_site ? Service_Catalog::ids() : array() );
+	}
 	public static function migrate_disclosure(): void {
 		$settings = new Settings();
 		$all      = $settings->all();
@@ -234,6 +248,28 @@ final class Activator {
 			unset( $image['disclosure'], $image['disclosure_text'] );
 			$settings->set( 'image', $image );
 		}
+	}
+	public static function migrate_disclosure_widget(): void {
+		$settings = new Settings();
+		$all      = $settings->all();
+		if ( ! empty( $all['disclosure_widget_migrated'] ) ) {
+			return;
+		}
+		$disclosure = is_array( $all['disclosure'] ?? null ) ? (array) $all['disclosure'] : array();
+		if ( array_key_exists( 'image_enabled', $disclosure ) && ! array_key_exists( 'image_article_enabled', $disclosure ) ) {
+			$disclosure['image_article_enabled'] = '1' === (string) $disclosure['image_enabled'] ? '1' : '0';
+		}
+		if ( array_key_exists( 'image_text', $disclosure ) && ! array_key_exists( 'image_article_text', $disclosure ) ) {
+			$disclosure['image_article_text'] = (string) $disclosure['image_text'];
+		}
+		foreach ( array( 'image_enabled', 'image_position', 'image_text' ) as $key ) {
+			unset( $disclosure[ $key ] );
+		}
+		foreach ( array( 'affiliate', 'review', 'article' ) as $key ) {
+			unset( $disclosure[ $key . '_position' ] );
+		}
+		$settings->set( 'disclosure', $disclosure );
+		$settings->set( 'disclosure_widget_migrated', true );
 	}
 	public static function migrate_verified_records(): void {
 		if ( '1' === get_option( self::VERIFIED_RECORDS_MIGRATED_OPTION ) ) {

@@ -289,14 +289,3 @@ figure.wp-block-image.size-large.gachireai-eyecatch {
 .gachireai-dialogue-turn__bubble p + p {
 	margin-top: 0.5rem;
 }
-.gachireai-disclosure {
-	margin: 0.75rem 0;
-	padding: 0.5rem 0.75rem;
-	border-left: 0.25rem solid var(--gachireai-quote-line, #e5e7eb);
-	background: rgba(0, 0, 0, 0.02);
-	font-size: 0.8rem;
-	line-height: 1.6;
-}
-.gachireai-disclosure__item {
-	margin: 0.25rem 0;
-}

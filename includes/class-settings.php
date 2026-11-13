@@ -2,31 +2,37 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI;
 use Tonkatsutei\Gachi_Review_AI\Image\Font_Catalog;
+use Tonkatsutei\Gachi_Review_AI\Scraping\Service_Catalog;
 class Settings {
 	public const OPTION_KEY = 'gachireai_settings';
-	public const COMMON_GROUPS = array( 'rakuten', 'amazon', 'yahoo', 'llm', 'jev', 'image', 'youtube', 'mastodon', 'scraping' );
+	public const COMMON_GROUPS = array( 'rakuten', 'amazon', 'yahoo', 'llm', 'jev', 'image', 'youtube', 'mastodon' );
 	private const DEFAULT_PROVIDER = 'openai';
 	public const TOP_HERO_WITH_TITLE = 'with_title';
 	public const TOP_HERO_IMAGE_ONLY = 'image_only';
 	public const TOP_HERO_HIDDEN     = 'hidden';
 	public const IMAGE_FAIL_ABORT    = 'abort';
 	public const IMAGE_FAIL_CONTINUE = 'continue';
-	public const DEFAULT_DISCLOSURE_TEXT = 'この画像は記事を元にAIで生成したものであり、紹介する商品とは無関係です。';
-	public const DISCLOSURE_KEYS = array( 'affiliate', 'image', 'review', 'article' );
-	public const DISCLOSURE_POSITION_TOP = 'top';
-	public const DISCLOSURE_POSITION_BOTTOM = 'bottom';
+	public const DISCLOSURE_KEYS = array( 'affiliate', 'review', 'article' );
+	public const IMAGE_ANNOTATION_KEYS = array( 'image_top', 'image_article' );
 	public const DISCLOSURE_DEFAULT_ENABLED = array(
 		'affiliate' => '1',
-		'image'     => '1',
 		'review'    => '1',
 		'article'   => '0',
 	);
+	public const IMAGE_ANNOTATION_DEFAULT_ENABLED = array(
+		'image_top'     => '1',
+		'image_article' => '1',
+	);
 	public const DISCLOSURE_DEFAULT_TEXTS = array(
 		'affiliate' => '当サイトはアフィリエイト広告（楽天市場・Yahoo!ショッピング・Amazon 等）を利用しています。',
-		'image'     => self::DEFAULT_DISCLOSURE_TEXT,
 		'review'    => '一部の記事には、販売ページや口コミサイト等に投稿されたレビューや商品情報を元に、AIが生成、リライト、要約したものが含まれることがあります。',
 		'article'   => '当サイトの記事は、収集した販売ページや口コミサイト等に投稿された情報を元に、AIがリライト、要約、集約したものです。',
 	);
+	public const IMAGE_ANNOTATION_DEFAULT_TEXTS = array(
+		'image_top'     => 'この画像は記事を元にAIで生成したものです。',
+		'image_article' => 'この画像は記事を元にAIで生成したものであり、紹介する商品とは無関係です。',
+	);
+	public const DISCLOSURE_DEFAULT_HEADING = '広告・AI使用に関する開示';
 	protected array $data;
 	protected bool $common_fallback = true;
 	private ?array $common_overrides_cache = null;
@@ -104,6 +110,38 @@ class Settings {
 			$list = array_values( array_diff( $list, array( $group ) ) );
 		}
 		$this->set( 'common_overrides', $list );
+	}
+	public function scraping_overrides(): array {
+		$raw = $this->data['scraping_overrides'] ?? null;
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$list = array();
+		foreach ( $raw as $service ) {
+			if ( is_scalar( $service ) && Service_Catalog::exists( (string) $service ) ) {
+				$list[] = (string) $service;
+			}
+		}
+		return array_values( array_unique( $list ) );
+	}
+	public function uses_common_scraping( string $service ): bool {
+		if ( ! $this->common_fallback || ! is_multisite() ) {
+			return false;
+		}
+		return ! in_array( $service, $this->scraping_overrides(), true );
+	}
+	public function set_scraping_override( string $service, bool $override ): void {
+		if ( ! Service_Catalog::exists( $service ) ) {
+			return;
+		}
+		$list = $this->scraping_overrides();
+		if ( $override ) {
+			$list[] = $service;
+			$list   = array_values( array_unique( $list ) );
+		} else {
+			$list = array_values( array_diff( $list, array( $service ) ) );
+		}
+		$this->set( 'scraping_overrides', $list );
 	}
 	private static function all_empty_fields( $value ): bool {
 		if ( is_array( $value ) ) {
@@ -293,25 +331,32 @@ class Settings {
 		);
 	}
 	public function disclosure(): array {
+		return $this->read_items( 'disclosure', self::DISCLOSURE_KEYS, self::DISCLOSURE_DEFAULT_ENABLED, self::DISCLOSURE_DEFAULT_TEXTS );
+	}
+	public function disclosure_heading(): string {
 		$saved = $this->get( 'disclosure', array() );
 		$saved = is_array( $saved ) ? $saved : array();
+		$heading = trim( (string) ( $saved['heading'] ?? '' ) );
+		return '' === $heading ? self::DISCLOSURE_DEFAULT_HEADING : $heading;
+	}
+	public function image_annotation(): array {
+		return $this->read_items( 'disclosure', self::IMAGE_ANNOTATION_KEYS, self::IMAGE_ANNOTATION_DEFAULT_ENABLED, self::IMAGE_ANNOTATION_DEFAULT_TEXTS );
+	}
+	private function read_items( string $group, array $keys, array $default_enabled, array $default_texts ): array {
+		$saved = $this->get( $group, array() );
+		$saved = is_array( $saved ) ? $saved : array();
 		$result = array();
-		foreach ( self::DISCLOSURE_KEYS as $key ) {
+		foreach ( $keys as $key ) {
 			$enabled = array_key_exists( $key . '_enabled', $saved )
 				? ( '1' === (string) $saved[ $key . '_enabled' ] ? '1' : '0' )
-				: self::DISCLOSURE_DEFAULT_ENABLED[ $key ];
-			$position = (string) ( $saved[ $key . '_position' ] ?? '' );
-			$position = in_array( $position, array( self::DISCLOSURE_POSITION_TOP, self::DISCLOSURE_POSITION_BOTTOM ), true )
-				? $position
-				: self::DISCLOSURE_POSITION_TOP;
+				: ( $default_enabled[ $key ] ?? '1' );
 			$text = trim( (string) ( $saved[ $key . '_text' ] ?? '' ) );
 			if ( '' === $text ) {
-				$text = self::DISCLOSURE_DEFAULT_TEXTS[ $key ];
+				$text = (string) ( $default_texts[ $key ] ?? '' );
 			}
 			$result[ $key ] = array(
-				'enabled'  => $enabled,
-				'position' => $position,
-				'text'     => $text,
+				'enabled' => $enabled,
+				'text'    => $text,
 			);
 		}
 		return $result;

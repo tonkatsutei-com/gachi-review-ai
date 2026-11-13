@@ -185,6 +185,12 @@
 .gachireai-section__switch .description {
 	margin: 4px 0 0;
 }
+.gachireai-copy-common {
+	margin-top: 10px;
+}
+.gachireai-copy-common .description {
+	margin: 6px 0 0;
+}
 .gachireai-section__actions--header {
 	margin: 0 0 8px;
 }
@@ -1562,4 +1568,19 @@ h3.gachireai-block__title {
 	font-size: 12px;
 	line-height: 18px;
 	color: #50575e;
+}
+.gachireai-disclosure-table th[scope="row"] {
+	width: 160px;
+	vertical-align: top;
+}
+.gachireai-disclosure-table td {
+	padding-top: 0.5rem;
+	padding-bottom: 0.5rem;
+	vertical-align: top;
+}
+.gachireai-disclosure-check {
+	display: inline-block;
+}
+.gachireai-disclosure-table textarea {
+	margin-top: 0.25rem;
 }

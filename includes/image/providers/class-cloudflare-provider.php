@@ -11,7 +11,7 @@ final class Cloudflare_Provider implements Provider {
 	private const MAX_PROMPT = 2048;
 	private const MAX_SAFETY_RETRIES = 2;
 	private static array $safety_retry_delays = array( 2, 4 );
-	private const SAFE_FALLBACK = 'A calm, bright, tidy modern lifestyle scene with natural window light, soft neutral tones, and a sense of everyday comfort, minimal editorial photography.';
+	private const SAFE_FALLBACK = 'A calm, harmonious everyday scene with soft natural daylight, warm muted tones, natural textures, and a sense of quiet comfort, minimal editorial photography.';
 	private string $account_id;
 	private string $api_key;
 	private string $model;

@@ -5,6 +5,13 @@ use Tonkatsutei\Gachi_Review_AI\Llm\Manager;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Site_Generator {
 	private const KEYS = array( 'name', 'author_slug', 'attributes', 'background', 'knowledge_level', 'writing_style', 'position', 'stance' );
+	private const NAME_STYLES = array(
+		'kanji'    => '漢字の人名（姓＋名でも名のみでもよい）',
+		'katakana' => 'カタカナのあだ名・ニックネーム',
+		'hiragana' => 'ひらがなの呼び名',
+		'romaji'   => 'ローマ字・英語風のニックネーム',
+		'themed'   => 'サイトのテーマ（カテゴリー）から連想される語感を人名に取り入れた呼び名',
+	);
 	private const GENDER_LABELS = array(
 		'male'   => '男性',
 		'female' => '女性',
@@ -64,6 +71,10 @@ final class Site_Generator {
 	public static function target_generated_keys(): array {
 		return self::TARGET_KEYS;
 	}
+	public static function random_name_style(): string {
+		$styles = array_values( self::NAME_STYLES );
+		return $styles[ mt_rand( 0, count( $styles ) - 1 ) ];
+	}
 	public static function unavailable_message(): string {
 		return __( "API キーが未設定のため AI 自動生成は使えません。\n「AI設定」タブでプロバイダーと API キーを保存すると有効になります。\n手動入力での保存は可能です。", GACHIREAI_TEXT_DOMAIN );
 	}
@@ -75,8 +86,8 @@ final class Site_Generator {
 		$data     = Manager::generate_json(
 			$provider,
 			self::system_prompt(),
-			self::user_prompt( $free_text, $scope, $persona ),
-			array( 'temperature' => 0.7 )
+			self::user_prompt( $free_text, $scope, $persona, self::random_name_style() ),
+			array( 'temperature' => 0.85 )
 		);
 		$persona = array();
 		foreach ( self::KEYS as $key ) {
@@ -104,7 +115,7 @@ final class Site_Generator {
 		}
 		return '';
 	}
-	private static function user_prompt( string $free_text, array $scope, array $persona ): string {
+	private static function user_prompt( string $free_text, array $scope, array $persona, string $name_style = '' ): string {
 		$parts   = array();
 		$context = self::scope_context( $scope );
 		if ( '' !== $context ) {
@@ -113,6 +124,9 @@ final class Site_Generator {
 		$person = self::persona_context( $persona, $free_text );
 		if ( '' !== $person ) {
 			$parts[] = $person;
+		}
+		if ( '' !== trim( $name_style ) ) {
+			$parts[] = '今回の name は「' . $name_style . '」の系統で、サイトの内容から連想される個性的な呼び名を 1 つ作ってください。';
 		}
 		$parts[] = '「このサイトを作る人はこんな人だろう」という観点で、上の情報からマイペルソナを JSON で作成してください。';
 		return implode( "\n\n", $parts );
@@ -171,14 +185,15 @@ final class Site_Generator {
 				'必ず次のキーだけを持つ JSON オブジェクトを返してください: '
 					. implode( ', ', self::KEYS ),
 				'position は experiencer（体験者）/ critic（評論家）/ researcher（研究者）/ curator（キュレーター）のいずれかの英単語にしてください。',
-				'writing_style は指定された「口調」（論文調 / ですます調 / 口語調 / ふざけ調）に合わせてください（例: ですます調なら「です・ます」で書く前提の文体にする）。',
+				'writing_style は指定された「口調」（論文調 / ですます調 / 口語調 / ふざけ調）に合わせ、その口調らしい語尾・言い回しを書き手の個性として具体的に書いてください（口調名を繰り返すだけにしない）。',
 				'「性別」は記事の語り手の性別として扱ってください。',
 				'特記事項に性格・職業・居住地・経験などがあれば、attributes・background・knowledge_level・stance に反映してください。',
 				'特記事項が空でも、性別・口調とサイトの情報から自然に補完してください。',
-				'name は記事の語り手の呼び名です（例: タカシ、ミサキ、オーディオ好きのタカシ）。',
-				'属性の説明（例: 「オーディオ好き会社員」）を name に入れず、必ず人名らしい呼び名にしてください。メモから人名が読み取れない場合は、自然な呼び名を 1 つ作ってください。',
+				'attributes・background・stance は、ありきたりな表現（例: 「30代・会社員」「ひとり暮らし」など）に偏らず、サイトの内容に即した具体的で個性的な人物像にしてください。',
+				'name は記事の語り手の呼び名です。ありふれた名前（タカシ・ミサキ・ケンタ・タロウ・ハナコなど）は使わず、サイトの内容から連想できる個性的な呼び名を 1 つ作ってください。',
+				'属性の説明を name に入れず、必ず人名・呼び名らしくしてください。メモから人名が読み取れない場合は、自然な呼び名を 1 つ作ってください。',
 				'name は 20 文字以内、attributes・knowledge_level・writing_style は 200 文字以内、background・stance は 400 文字以内の日本語にしてください。',
-				'author_slug は投稿者 URL（/author/〇〇/）に使う識別子です。name をローマ字にした英小文字（例: タカシ → takashi、オーディオ好きのタカシ → audio-takashi）にし、英数字とハイフンだけ・20 文字以内にしてください。',
+				'author_slug は投稿者 URL（/author/〇〇/）に使う識別子です。生成した name をローマ字にした英小文字にし、英数字とハイフンだけ・20 文字以内にしてください。',
 				'メモに書かれていない部分は、メモの内容から自然に補完してください（誇張・虚偽の経歴は作らない）。',
 			)
 		);
@@ -192,7 +207,7 @@ final class Site_Generator {
 			$provider,
 			self::target_system_prompt(),
 			self::target_user_prompt( $free_text, $scope, $my_persona ),
-			array( 'temperature' => 0.7 )
+			array( 'temperature' => 0.85 )
 		);
 		$target = array();
 		foreach ( self::TARGET_KEYS as $key ) {
@@ -281,10 +296,11 @@ final class Site_Generator {
 				'必ず次のキーだけを持つ JSON オブジェクトを返してください: '
 					. implode( ', ', self::TARGET_KEYS ),
 				'knowledge_level は beginner（初心者）/ intermediate（中級者）/ advanced（上級者）のいずれかの英単語にしてください。',
-				'attributes は読者の属性（年代・性別・職業・生活状況など）を簡潔にしてください（例: 30代・会社員・ひとり暮らし）。',
-				'worries は読者が今抱えている悩み・課題、wants は読者が求めている情報・解決したいことを書いてください。',
+				'attributes は読者の属性（年代・性別・職業・生活状況など）を簡潔にしてください。ありきたりな組み合わせ（「30代・会社員・ひとり暮らし」など）に偏らず、サイトの内容に即した具体的な人物像にしてください。',
+				'worries は読者が今抱えている悩み・課題、wants は読者が求めている情報・解決したいことを、サイトの商品分野に即して具体的に書いてください（「どれを選べばいいか分からない」のような定型文だけで済ませない）。',
 				'search_flow は読者が検索から記事にたどり着く流れ（どんな言葉で検索し、何を比較・確認したいか）を書いてください。',
 				'purchase_behavior は読者の購買行動（比較の仕方・決め手・購入前に確認する点）を書いてください。',
+				'属性・悩み・購買行動は、ありきたりな型に寄せず、サイトの内容に応じて多様にしてください。',
 				'記事を書く人（マイペルソナ）の情報がある場合は、その人が届けたい読者像として矛盾しないようにしてください。',
 				'attributes・search_flow は 200 文字以内、worries・wants・purchase_behavior は 400 文字以内の日本語にしてください。',
 				'情報が足りない部分は、サイトの情報と書く人から自然に補完してください（誇張・虚偽は書かない）。',

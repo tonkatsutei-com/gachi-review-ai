@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Admin;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Card_Settings;
 use Tonkatsutei\Gachi_Review_AI\Article\Generate_Progress;
+use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Multisite;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\Template\Div_Renderer;
@@ -28,6 +29,8 @@ final class Admin {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( License_Settings::class, 'maybe_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'update_option_' . Settings::OPTION_KEY, array( Page_Cache::class, 'flush_all' ) );
+		add_action( 'update_site_option_' . Common_Store::OPTION_KEY, array( Page_Cache::class, 'flush_all' ) );
 		if ( is_multisite() ) {
 			add_action( 'network_admin_menu', array( $this, 'register_common_menus' ) );
 			add_action( 'admin_post_' . Common_Settings::ACTION_SAVE, array( $this->common_settings(), 'handle_save' ) );
@@ -107,7 +110,6 @@ final class Admin {
 		add_action( 'admin_post_' . Maintenance::ACTION_INSTALL_THEME, array( $maintenance, 'handle_install_theme' ) );
 		add_action( 'admin_post_' . Maintenance::ACTION_THEME_SETTINGS, array( $maintenance, 'handle_theme_settings' ) );
 		add_action( 'admin_post_' . Scraping_Settings::ACTION_SAVE, array( $this->scraping_settings(), 'handle_save' ) );
-		add_action( 'admin_post_' . Scraping_Settings::ACTION_SWITCH, array( $this->scraping_settings(), 'handle_switch' ) );
 		$eyecatch_metabox = $this->eyecatch_metabox();
 		add_action( 'add_meta_boxes_post', array( $eyecatch_metabox, 'add' ) );
 		add_action( 'admin_post_' . Eyecatch_Metabox::ACTION, array( $eyecatch_metabox, 'handle' ) );
@@ -366,7 +368,24 @@ final class Admin {
 			$this->render_license_only();
 			return;
 		}
-		switch ( Tabs::current() ) {
+		$tab = Tabs::current();
+		if ( ! Page_Cache::should_cache() ) {
+			$this->dispatch( $tab );
+			return;
+		}
+		$cached = Page_Cache::get( $tab );
+		if ( null !== $cached ) {
+			echo $cached; 
+			return;
+		}
+		ob_start();
+		$this->dispatch( $tab );
+		$html = (string) ob_get_clean();
+		Page_Cache::set( $tab, $html );
+		echo $html; 
+	}
+	private function dispatch( string $tab ): void {
+		switch ( $tab ) {
 			case Tabs::TAB_LLM:
 			case Tabs::TAB_ASP:
 				$this->api_affiliate()->render();

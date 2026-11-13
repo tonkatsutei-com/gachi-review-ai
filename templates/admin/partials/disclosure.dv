@@ -19,10 +19,26 @@
 				<h3 class="gachireai-block__title">{$block_title}</h3>
 				$block_title?
 				<div class="gachireai-block__main">
-					<table class="form-table" role="presentation">
-						?$fields
-						[$fields]{% partials/field.dv %}[/$fields]
-						$fields?
+					<table class="form-table gachireai-disclosure-table" role="presentation">
+						?$rows
+						[$rows]
+						<tr>
+							?$has_th
+							<th scope="row">{$th_label}</th>
+							$has_th?
+							<td>
+								?$is_input
+								<input type="text" name="{$input_name}" value="{$input_value}" class="regular-text" placeholder="{$placeholder}">
+								$is_input?
+								?$is_item
+								<label class="gachireai-disclosure-check"><input type="checkbox" name="{$checkbox_name}" value="1" ?$checked checked$checked?> {$checkbox_label}</label>
+								<br>
+								<textarea name="{$text_name}" rows="2" class="large-text" placeholder="{$placeholder}">{$text_value}</textarea>
+								$is_item?
+							</td>
+						</tr>
+						[/$rows]
+						$rows?
 					</table>
 				</div>
 			</div>
