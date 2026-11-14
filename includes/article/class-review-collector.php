@@ -194,7 +194,7 @@ final class Review_Collector {
 				}
 			}
 		}
-		$result['judged'] = Jev_Judger::from_settings( $this->settings )->judge_pending( $wanted, $started );
+		$result['judged'] = Jev_Judger::from_settings( $this->settings )->judge_pending( $wanted, $started, Jev_Judger::DEFAULT_LIMIT, $name );
 		return $result;
 	}
 	private function merge( array $result, callable $collect ): array {

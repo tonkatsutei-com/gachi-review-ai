@@ -51,6 +51,13 @@ final class Source_Settings {
 		}
 		return $options;
 	}
+	public static function all_enabled_values(): array {
+		return array(
+			self::PARTNER_EC_KEY    => self::SWITCH_ON,
+			self::PARTNER_SNS_KEY   => implode( ',', self::PARTNER_SNS ),
+			self::PARTNER_GACHI_KEY => implode( ',', self::DIRECT_SOURCES ),
+		);
+	}
 	public static function partner_sns_options(): array {
 		$options = array();
 		foreach ( self::PARTNER_SNS as $sns ) {

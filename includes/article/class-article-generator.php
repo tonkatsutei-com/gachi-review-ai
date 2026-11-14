@@ -32,12 +32,6 @@ final class Article_Generator {
 	private const KEYS = array( 'title', 'lead', 'body', 'category', 'tags', 'slug' );
 	private const BODY_TYPES = array( 'h2', 'h3', 'p', 'ul', 'quote', 'dialogue' );
 	private const MAX_TOKENS = 8000;
-	private const REVIEW_LIMITS = array(
-		'summary'    => 3,
-		'quote'      => 6,
-		'experience' => 2,
-		'dialogue'   => 2,
-	);
 	private const MAX_COMMENTS = 10;
 	private const MAX_THREAD_TEXT = 2000;
 	private const MAX_MATERIAL_TEXT = 8000;
@@ -144,10 +138,10 @@ final class Article_Generator {
 			}
 			$this->assert_not_excluded( $product );
 			$ledger_id = $this->register_product( $ec, $product, $query, $genre_id );
-			$reviews  = array();
-			$matched  = false;
-			$excluded = 0;
-			$used     = 0;
+			$reviews    = array();
+			$candidates = 0;
+			$excluded   = 0;
+			$used       = 0;
 			if ( ! Ai_Review::is_only() ) {
 				if ( null === $collected ) {
 					$collect_started = microtime( true );
@@ -158,13 +152,14 @@ final class Article_Generator {
 					throw new \RuntimeException( (string) ( $collected['message'] ?? '' ) );
 				}
 				Generate_Progress::update( $user_id, __( '採用レビューを選定中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_PICK, Generate_Progress::STEP_TOTAL );
-				$picked   = $this->pick_reviews( (string) $product['product_name'], $force );
-				$reviews  = $picked['picked'];
-				$matched  = (bool) $picked['matched'];
-				$excluded = (int) ( $picked['excluded'] ?? 0 );
-				$used     = (int) ( $picked['used'] ?? 0 );
+				$picked     = $this->pick_reviews( (string) $product['product_name'], $force );
+				$reviews    = $picked['picked'];
+				$candidates = (int) ( $picked['candidates'] ?? 0 );
+				$excluded   = (int) ( $picked['excluded'] ?? 0 );
+				$used       = (int) ( $picked['used'] ?? 0 );
 			}
 			Generate_Progress::update( $user_id, __( 'レビューを加工中...', GACHIREAI_TEXT_DOMAIN ), Generate_Progress::STEP_REWRITE, Generate_Progress::STEP_TOTAL );
+			$reviews = ( new Review_Cleaner( $this->settings ) )->process( $reviews, $product );
 			$reviews = ( new Ec_Review_Rewriter( $this->settings ) )->process( $reviews, $product );
 			$ai_reviews = array();
 			if ( ! Ai_Review::is_off() && in_array( $this->article_type(), self::AI_REVIEW_TYPES, true ) ) {
@@ -188,7 +183,7 @@ final class Article_Generator {
 				}
 			}
 			if ( array() === $reviews ) {
-				throw $this->empty_reviews_exception( $force, $matched, $excluded, $used );
+				throw $this->empty_reviews_exception( $force, $excluded, $used, $candidates );
 			}
 			if ( Ai_Review::is_off() && count( $reviews ) < Ai_Review::count() ) {
 				throw new No_Usable_Reviews_Exception(
@@ -450,20 +445,20 @@ final class Article_Generator {
 		}
 		return __( 'EC で対象商品を選定できませんでした。「レビュー設定」のカテゴリー・キーワードを見直してください。', GACHIREAI_TEXT_DOMAIN );
 	}
-	private function empty_reviews_exception( bool $force, bool $matched, int $excluded = 0, int $used = 0 ): \RuntimeException {
+	private function empty_reviews_exception( bool $force, int $excluded = 0, int $used = 0, int $candidates = 0 ): \RuntimeException {
 		if ( ! $this->has_threads() ) {
 			return new No_Usable_Reviews_Exception(
 				__( '選定した商品のレビューを収集できませんでした。レビュー取得設定の検索先（5ちゃんねるの板・Reddit のサブレディット）と YouTube の API キーを確認して、もう一度お試しください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
-		if ( ! $matched ) {
+		if ( 0 === $candidates ) {
 			return new No_Usable_Reviews_Exception(
-				__( '収集したレビューの中に、この商品に一致する投稿が見つかりませんでした。商品名の表記を変えるか、時間をおいてもう一度お試しください。', GACHIREAI_TEXT_DOMAIN )
+				__( '対象商品のレビューが見つかりませんでした。商品名の表記を変えるか、時間をおいてもう一度お試しください。', GACHIREAI_TEXT_DOMAIN )
 			);
 		}
 		if ( 0 < $excluded ) {
 			$message = sprintf(
-				__( 'この商品に一致する投稿 %d 件は、Jev の判定で除外されました（商品のレビューでない、または広告・宣伝と判定）。記事に使えるレビューがありません。', GACHIREAI_TEXT_DOMAIN ),
+				__( '対象商品の投稿 %d 件は、Jev の判定で除外されました（商品のレビューでない・別の商品・配送のみ・広告 等）。記事に使えるレビューがありません。', GACHIREAI_TEXT_DOMAIN ),
 				$excluded
 			);
 			if ( 0 < $used ) {
@@ -493,27 +488,16 @@ final class Article_Generator {
 		return ( new Ai_Review_Generator( $this->settings ) )->generate( $profile, $product, $shortfall );
 	}
 	private function pick_reviews( string $product_name, bool $force = false ): array {
-		$needles = $this->name_needles( $product_name );
-		$limit   = self::REVIEW_LIMITS[ $this->article_type() ] ?? self::REVIEW_LIMITS['summary'];
-		$limit = max( $limit, Ai_Review::count() );
+		$limit = Ai_Review::published_max();
 		$used_keys = $force ? array() : $this->used_recent_sources()['source_keys'];
 		$picked    = array();
-		$matched   = false;
 		$excluded  = 0;
 		$used      = 0;
-		foreach ( $this->top_threads( $product_name ) as $thread ) {
+		$threads   = $this->top_threads( $product_name );
+		foreach ( $threads as $thread ) {
 			if ( count( $picked ) >= $limit ) {
 				break;
 			}
-			$thread_source = (string) ( $thread['source'] ?? '' );
-			$by_product    = Ec_Review_Collector::SOURCE === $thread_source || Source_Settings::is_sns( $thread_source );
-			$matches = $by_product
-				? self::saved_product_matches( $thread, $needles )
-				: self::title_matches( (string) ( $thread['title'] ?? '' ), $needles );
-			if ( ! $matches ) {
-				continue;
-			}
-			$matched = true;
 			if ( Jev_Questions::is_excluded( Jev_Questions::verdict_of( (string) ( $thread['judge'] ?? '' ) ) ) ) {
 				++$excluded;
 				continue;
@@ -526,38 +510,11 @@ final class Article_Generator {
 			$picked[] = $thread;
 		}
 		return array(
-			'picked'   => $picked,
-			'matched'  => $matched,
-			'excluded' => $excluded,
-			'used'     => $used,
+			'picked'     => $picked,
+			'excluded'   => $excluded,
+			'used'       => $used,
+			'candidates' => count( $threads ),
 		);
-	}
-	private function name_needles( string $product_name ): array {
-		$name = Product_Ledger::name_key( $product_name );
-		if ( '' === $name ) {
-			return array();
-		}
-		$needles = array( $name );
-		$words   = preg_split( '/\s+/u', $name );
-		foreach ( is_array( $words ) ? $words : array() as $word ) {
-			if ( mb_strlen( $word ) >= 4 ) {
-				$needles[] = $word;
-			}
-		}
-		return array_values( array_unique( $needles ) );
-	}
-	private static function title_matches( string $title, array $needles ): bool {
-		$haystack = mb_strtolower( $title );
-		foreach ( $needles as $needle ) {
-			if ( '' !== $needle && str_contains( $haystack, $needle ) ) {
-				return true;
-			}
-		}
-		return false;
-	}
-	private static function saved_product_matches( array $thread, array $needles ): bool {
-		$product = Product_Ledger::name_key( (string) ( $thread['product_name'] ?? '' ) );
-		return '' !== $product && in_array( $product, $needles, true );
 	}
 	private function used_recent_sources(): array {
 		if ( Reuse_Interval::is_unlimited() ) {

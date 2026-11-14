@@ -142,7 +142,7 @@ final class Common_Settings extends Screen {
 			$this->section_model(
 				'jev',
 				__( '判定AI', GACHIREAI_TEXT_DOMAIN ),
-				__( 'レビューを判定する判定AI（Jev）の API キーを設定します。判定AI（Jev）を使うと、収集したレビューを「採用・保留・除外」に自動判定でき、記事に使う素材の品質を保てます。判定AI（Jev）は安価な有料サービスです（Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。', GACHIREAI_TEXT_DOMAIN ),
+				__( 'レビューを判定する判定AI（Jev）の API キーを設定します。判定AI（Jev）を使うと、収集したレビューを「採用・保留・要クリーニング・除外」に自動判定でき、記事に使う素材の品質を保てます（商品レビューが一部でも含まれる投稿は不要な部分だけを除去して活用します）。判定AI（Jev）は安価な有料サービスです（Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。', GACHIREAI_TEXT_DOMAIN ),
 				$this->definitions_jev(),
 				'jev',
 				$jev,

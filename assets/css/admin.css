@@ -468,6 +468,20 @@ h3.gachireai-block__title {
 	color: #a7aaad;
 	cursor: not-allowed;
 }
+.gachireai-site-create__checks {
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+.gachireai-site-create__check {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
 .gachireai-bold-red {
 	color: #c00000;
 	font-weight: bold;

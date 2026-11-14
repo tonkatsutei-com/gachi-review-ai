@@ -1258,6 +1258,36 @@
 		}
 		parts.overlay.classList.remove( 'is-retrying' );
 	}
+	document.addEventListener( 'change', function ( event ) {
+		var ec = event.target && event.target.closest
+			? event.target.closest( '[data-gachireai-site-ec]' )
+			: null;
+		if ( ! ec ) {
+			return;
+		}
+		var form = ec.closest ? ec.closest( 'form' ) : null;
+		if ( ! form ) {
+			return;
+		}
+		var mode         = ec.getAttribute( 'data-gachireai-site-ec' ) || 'category';
+		var options      = form.querySelectorAll( '[data-gachireai-type-option]' );
+		var needs_switch = false;
+		Array.prototype.forEach.call( options, function ( option ) {
+			var option_mode = option.getAttribute( 'data-gachireai-type-option' );
+			var visible     = option_mode === 'all' || option_mode === mode;
+			option.hidden = ! visible;
+			var input = option.querySelector( 'input[type="radio"]' );
+			if ( input && input.checked && ! visible ) {
+				needs_switch = true;
+			}
+		} );
+		if ( needs_switch ) {
+			var general = form.querySelector( '[data-gachireai-type-option="all"] input[type="radio"]' );
+			if ( general ) {
+				general.checked = true;
+			}
+		}
+	} );
 	var site_run = null;
 	document.addEventListener( 'click', function ( event ) {
 		var abort = event.target && event.target.closest

@@ -341,7 +341,7 @@
 		</div>
 	</section>
 	?$network_visible
-	<section class="gachireai-section">
+	<section class="gachireai-section" id="gachireai-section-network">
 		<header class="gachireai-section__header">
 			<h2 class="gachireai-section__title">{$network_title}</h2>
 			<p class="gachireai-section__desc">{$network_description}</p>

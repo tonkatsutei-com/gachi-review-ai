@@ -3,7 +3,6 @@ declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Admin;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Card_Settings;
 use Tonkatsutei\Gachi_Review_AI\Article\Generate_Progress;
-use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Multisite;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\Template\Div_Renderer;
@@ -29,8 +28,6 @@ final class Admin {
 		add_action( 'admin_menu', array( $this, 'register_menus' ) );
 		add_action( 'admin_init', array( License_Settings::class, 'maybe_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'update_option_' . Settings::OPTION_KEY, array( Page_Cache::class, 'flush_all' ) );
-		add_action( 'update_site_option_' . Common_Store::OPTION_KEY, array( Page_Cache::class, 'flush_all' ) );
 		if ( is_multisite() ) {
 			add_action( 'network_admin_menu', array( $this, 'register_common_menus' ) );
 			add_action( 'admin_post_' . Common_Settings::ACTION_SAVE, array( $this->common_settings(), 'handle_save' ) );
@@ -368,21 +365,7 @@ final class Admin {
 			$this->render_license_only();
 			return;
 		}
-		$tab = Tabs::current();
-		if ( ! Page_Cache::should_cache() ) {
-			$this->dispatch( $tab );
-			return;
-		}
-		$cached = Page_Cache::get( $tab );
-		if ( null !== $cached ) {
-			echo $cached; 
-			return;
-		}
-		ob_start();
-		$this->dispatch( $tab );
-		$html = (string) ob_get_clean();
-		Page_Cache::set( $tab, $html );
-		echo $html; 
+		$this->dispatch( Tabs::current() );
 	}
 	private function dispatch( string $tab ): void {
 		switch ( $tab ) {

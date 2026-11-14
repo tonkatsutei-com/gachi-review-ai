@@ -775,7 +775,7 @@ final class Api_Affiliate extends Screen
 			return __('記事の生成に使う文章生成AIの設定です。', GACHIREAI_TEXT_DOMAIN);
 		}
 		if (self::KEY_JEV === $key) {
-			return __('レビューを判定する判定AI（Jev）の設定です。判定AI（Jev）を使うと、収集したレビューを「採用・保留・除外」に自動判定でき、記事に使う素材の品質を保てます（商品に無関係な投稿・宣伝目的の投稿などを除外。判定専用AIのため高速・低コスト）。判定AI（Jev）は安価な有料サービスです（利用には Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。', GACHIREAI_TEXT_DOMAIN);
+			return __('レビューを判定する判定AI（Jev）の設定です。判定AI（Jev）を使うと、収集したレビューを「採用・保留・要クリーニング・除外」に自動判定でき、記事に使う素材の品質を保てます（商品に無関係な投稿・別の商品・配送のみの投稿・宣伝目的の投稿などを除外するほか、商品レビューが一部でも含まれる投稿は不要な部分だけを除去して活用します。判定専用AIのため高速・低コスト）。判定AI（Jev）は安価な有料サービスです（利用には Jev（typesafe.ai）のアカウントと API キーが必要です）。必須ではありません（任意設定）。未設定でもレビューの収集・記事生成は行われ、判定だけがスキップされます。ただし、EC・SNS 以外の取得元（Reddit・5ちゃんねる・YouTube・Hacker News・Mastodon）は、判定AI（Jev）を設定しないと他商品や配送など関係ないレビューが混ざるリスクが高まります。', GACHIREAI_TEXT_DOMAIN);
 		}
 		if (self::KEY_IMAGE === $key) {
 			return __("ファビコン・プロフィール画像・アイキャッチなどの生成に使う画像生成AIの設定です。\n画像生成は PRO, BASIC ライセンスのみです（BASIC は一部制限あり）。", GACHIREAI_TEXT_DOMAIN);
@@ -1080,7 +1080,7 @@ final class Api_Affiliate extends Screen
 				'type'        => 'text',
 				'max'         => 200,
 				'field_disabled' => $disabled,
-				'description' => __('判定AI（Jev）は安価な有料サービスです（任意設定）。API キーは Jev（typesafe.ai）で取得してください。未設定でもレビューの収集・記事生成は行われます。', GACHIREAI_TEXT_DOMAIN),
+				'description' => __('判定AI（Jev）は安価な有料サービスです（任意設定）。API キーは Jev（typesafe.ai）で取得してください。未設定でもレビューの収集・記事生成は行われますが、EC・SNS 以外の取得元は他商品や配送など関係ないレビューが混ざるリスクが高まります。', GACHIREAI_TEXT_DOMAIN),
 			),
 			'model'   => array(
 				'label'       => __('モデル', GACHIREAI_TEXT_DOMAIN),

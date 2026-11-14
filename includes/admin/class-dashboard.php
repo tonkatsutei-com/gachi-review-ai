@@ -754,15 +754,17 @@ final class Dashboard extends Screen {
 		$attempted = (int) ( $judged['attempted'] ?? 0 );
 		$adopt     = (int) ( $judged['adopt'] ?? 0 );
 		$hold      = (int) ( $judged['hold'] ?? 0 );
+		$clean     = (int) ( $judged['clean'] ?? 0 );
 		$exclude   = (int) ( $judged['exclude'] ?? 0 );
 		$pending   = (int) ( $judged['failed'] ?? 0 ) + (int) ( $judged['skipped'] ?? 0 );
 		if ( 0 === $attempted && 0 === $pending && empty( $judged['capped'] ) ) {
 			return array();
 		}
 		$text = sprintf(
-			esc_html__( '判定: 採用 %1$d / 保留 %2$d / 除外 %3$d', GACHIREAI_TEXT_DOMAIN ),
+			esc_html__( '判定: 採用 %1$d / 保留 %2$d / 要クリーニング %3$d / 除外 %4$d', GACHIREAI_TEXT_DOMAIN ),
 			$adopt,
 			$hold,
+			$clean,
 			$exclude
 		);
 		if ( 0 < $pending ) {

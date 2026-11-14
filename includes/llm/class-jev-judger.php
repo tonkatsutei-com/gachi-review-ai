@@ -31,11 +31,12 @@ final class Jev_Judger {
 		$jev      = $settings->jev();
 		return new self( (string) ( $jev['api_key'] ?? '' ), (string) ( $jev['model'] ?? '' ) );
 	}
-	public function judge_pending( array $sources, string $since, int $limit = self::DEFAULT_LIMIT ): array {
+	public function judge_pending( array $sources, string $since, int $limit = self::DEFAULT_LIMIT, string $product_name = '' ): array {
 		$result = array(
 			'attempted' => 0,
 			'adopt'     => 0,
 			'hold'      => 0,
+			'clean'     => 0,
 			'exclude'   => 0,
 			'failed'    => 0,
 			'skipped'   => 0,
@@ -78,7 +79,7 @@ final class Jev_Judger {
 				$result['reason'] = self::REASON_FAILED;
 				break;
 			}
-			$state = $this->state( $row );
+			$state = $this->state( $row, $product_name );
 			if ( '' === $state ) {
 				++$result['skipped'];
 				continue;
@@ -119,9 +120,9 @@ final class Jev_Judger {
 		);
 		return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : array();
 	}
-	private function state( array $row ): string {
+	private function state( array $row, string $product_name = '' ): string {
 		$parts   = array();
-		$product = trim( (string) ( $row['product_name'] ?? '' ) );
+		$product = '' !== trim( $product_name ) ? trim( $product_name ) : trim( (string) ( $row['product_name'] ?? '' ) );
 		$title   = trim( (string) ( $row['title'] ?? '' ) );
 		if ( '' !== $product ) {
 			$parts[] = '商品名: ' . $product;
@@ -162,7 +163,7 @@ final class Jev_Judger {
 		$attempt = 0;
 		while ( true ) {
 			try {
-				return $this->client->judge( $state, Jev_Questions::set_v4() );
+				return $this->client->judge( $state, Jev_Questions::set_v6() );
 			} catch ( Provider_Exception $e ) {
 				if ( ! $e->is_retryable() || $attempt >= self::MAX_RETRIES ) {
 					throw $e;
@@ -182,7 +183,7 @@ final class Jev_Judger {
 		$encoded = wp_json_encode(
 			array(
 				'v'          => self::SCHEMA_VERSION,
-				'set'        => Jev_Questions::SET_V4,
+				'set'        => Jev_Questions::SET_V6,
 				'model'      => (string) ( $judgement['model'] ?? '' ),
 				'judged_at'  => $judged_at,
 				'thresholds' => Jev_Questions::thresholds_for( $source ),
@@ -224,10 +225,11 @@ final class Jev_Judger {
 		}
 		$pending = (int) ( $result['failed'] ?? 0 ) + $skipped;
 		$message = sprintf(
-			__( 'レビューの判定を行いました（対象 %1$d 件 / 採用 %2$d・保留 %3$d・除外 %4$d / 未判定 %5$d）。', GACHIREAI_TEXT_DOMAIN ),
+			__( 'レビューの判定を行いました（対象 %1$d 件 / 採用 %2$d・保留 %3$d・要クリーニング %4$d・除外 %5$d / 未判定 %6$d）。', GACHIREAI_TEXT_DOMAIN ),
 			$attempted,
 			(int) ( $result['adopt'] ?? 0 ),
 			(int) ( $result['hold'] ?? 0 ),
+			(int) ( $result['clean'] ?? 0 ),
 			(int) ( $result['exclude'] ?? 0 ),
 			$pending
 		);

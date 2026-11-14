@@ -9,7 +9,7 @@ final class Ai_Review_Generator {
 	public const SOURCE = 'ai';
 	private const MAX_TITLE = 40;
 	private const MAX_TEXT = 600;
-	private const MAX_TOKENS = 3000;
+	private const MAX_TOKENS = 8192;
 	private array $llm;
 	public function __construct( ?Settings $settings = null ) {
 		$settings  = $settings ?? new Settings();

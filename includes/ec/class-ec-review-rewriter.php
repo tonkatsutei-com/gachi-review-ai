@@ -6,7 +6,7 @@ use Tonkatsutei\Gachi_Review_AI\Llm\Manager;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 final class Ec_Review_Rewriter {
 	private const MAX_TEXT = 600;
-	private const MAX_TOKENS = 3000;
+	private const MAX_TOKENS = 8192;
 	private array $llm;
 	public function __construct( ?Settings $settings = null ) {
 		$settings  = $settings ?? new Settings();
@@ -44,9 +44,6 @@ final class Ec_Review_Rewriter {
 			throw new \RuntimeException( self::unavailable_message() );
 		}
 		$results = $this->rewrite( $mode, $product, $targets );
-		if ( Ec_Review_Use::MODE_SYNTHESIZE === $mode ) {
-			return $this->synthesize( $reviews, $targets, $results, $product );
-		}
 		$indexes = array_keys( $targets );
 		foreach ( $results as $position => $text ) {
 			if ( ! isset( $indexes[ $position ] ) || '' === $text ) {
@@ -67,46 +64,7 @@ final class Ec_Review_Rewriter {
 				'max_tokens'  => self::MAX_TOKENS,
 			)
 		);
-		return self::normalize( $data, count( $targets ), Ec_Review_Use::MODE_SYNTHESIZE === $mode );
-	}
-	private function synthesize( array $reviews, array $targets, array $results, array $product ): array {
-		$text = (string) ( $results[0] ?? '' );
-		if ( '' === $text ) {
-			return $reviews;
-		}
-		$community = '';
-		foreach ( $targets as $index => $_target ) {
-			$community = trim( (string) ( $reviews[ $index ]['community'] ?? '' ) );
-			if ( '' !== $community ) {
-				break;
-			}
-		}
-		$first_index = array_key_first( $targets );
-		$synthesized = array(
-			'source'       => Ec_Review_Collector::SOURCE,
-			'external_id'  => '',
-			'community'    => $community,
-			'title'        => '',
-			'product_name' => (string) ( $product['product_name'] ?? '' ),
-			'permalink'    => '',
-			'url'          => '',
-			'score'        => 0,
-			'num_comments' => 0,
-			'judge'        => null,
-			'rating'       => null,
-			'text'         => $text,
-		);
-		$merged = array();
-		foreach ( $reviews as $index => $review ) {
-			if ( $index === $first_index ) {
-				$merged[] = $synthesized;
-			}
-			if ( array_key_exists( $index, $targets ) ) {
-				continue;
-			}
-			$merged[] = $review;
-		}
-		return $merged;
+		return self::normalize( $data, count( $targets ) );
 	}
 	private function thread_text( array $thread ): string {
 		$text = trim( (string) ( $thread['text'] ?? '' ) );
@@ -162,7 +120,7 @@ final class Ec_Review_Rewriter {
 		if ( Ec_Review_Use::MODE_REWRITE === $mode ) {
 			return '各レビューを、元の投稿者とは別の人が書いたように、自然な日本語で書き直してください。意味・評価・具体的な事実は変えないでください。';
 		}
-		return '複数のレビューを元に、1 つの新しいレビューを作成してください。複数の意見を統合し、商品の長所と短所をバランスよく含めてください。存在しない事実を創作しないでください。';
+		return '複数のレビューを元に、元のレビューと同じ件数の新しいレビューを作成してください。複数の意見を統合し、商品の長所と短所をバランスよく含めてください。各レビューは別々の投稿者が書いたように内容が重複しないようにしてください。存在しない事実を創作しないでください。';
 	}
 	private static function product_context( array $product ): string {
 		$lines = array();
@@ -179,21 +137,12 @@ final class Ec_Review_Rewriter {
 		}
 		return '【商品】' . "\n" . implode( "\n", $lines );
 	}
-	private static function normalize( array $data, int $count, bool $single ): array {
+	private static function normalize( array $data, int $count ): array {
 		$raw = $data['reviews'] ?? $data['items'] ?? $data;
 		if ( is_scalar( $raw ) ) {
 			$raw = array( $raw );
 		}
 		if ( ! is_array( $raw ) ) {
-			return array();
-		}
-		if ( $single ) {
-			foreach ( $raw as $item ) {
-				$text = self::clean_text( is_array( $item ) ? ( $item['text'] ?? $item['body'] ?? $item['content'] ?? '' ) : $item );
-				if ( '' !== $text ) {
-					return array( mb_substr( $text, 0, self::MAX_TEXT ) );
-				}
-			}
 			return array();
 		}
 		$texts    = array_fill( 0, $count, '' );

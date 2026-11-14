@@ -16,6 +16,10 @@ final class Site_Create extends Screen {
 	public const EC_FIELD = 'gachireai_ec';
 	public const TYPE_FIELD = 'gachireai_site_type';
 	public const ARTICLE_FIELD = 'gachireai_article_type';
+	public const PLUGINS_FIELD = 'gachireai_site_plugins';
+	public const INSTALL_THEME_FIELD = 'gachireai_site_install_theme';
+	public const THEME_SETTINGS_FIELD = 'gachireai_site_theme_settings';
+	public const WP_SETTINGS_FIELD = 'gachireai_site_wp_settings';
 	private const RESULT_TRANSIENT = 'gachireai_site_create_result_';
 	private const THEMES_TRANSIENT = 'gachireai_site_create_themes_';
 	private const TTL = 1800;
@@ -26,6 +30,22 @@ final class Site_Create extends Screen {
 		$themes = get_transient( self::THEMES_TRANSIENT . get_current_user_id() );
 		$parsed = $this->result_model( $result );
 		$theme_value = isset( $parsed['theme'] ) ? (string) $parsed['theme'] : '';
+		$available_ecs = ( new Site_Builder() )->available_ecs();
+		$ec_default    = isset( $available_ecs[0] ) ? (string) $available_ecs[0] : '';
+		$ec_value      = $this->last_input( $result, 'ec', $ec_default );
+		if ( ! in_array( $ec_value, $available_ecs, true ) ) {
+			$ec_value = $ec_default;
+		}
+		$type_choices = Site_Builder::type_choices_for_ec( $ec_value );
+		$type_default = Site_Builder::type_default_for_ec( $ec_value );
+		$type_value   = $this->last_input( $result, 'type', $type_default );
+		if ( ! in_array( $type_value, $type_choices, true ) ) {
+			$type_value = $type_default;
+		}
+		$article_value = $this->last_input( $result, 'article', Site_Builder::ARTICLE_DEFAULT );
+		if ( ! in_array( $article_value, Site_Builder::ARTICLE_CHOICES, true ) ) {
+			$article_value = Site_Builder::ARTICLE_DEFAULT;
+		}
 		return array(
 			'site_create_form_action'       => esc_url( admin_url( 'admin-post.php' ) ),
 			'site_create_hidden_fields'     => array(
@@ -44,25 +64,32 @@ final class Site_Create extends Screen {
 			'site_create_theme_candidates'  => $this->theme_candidates( $themes ),
 			'site_create_ec_label'          => esc_html__( 'メインEC', GACHIREAI_TEXT_DOMAIN ),
 			'site_create_ec_name'           => esc_attr( self::EC_FIELD ),
-			'site_create_ec_options'        => $this->select_options(
-				Site_Builder::EC_CHOICES,
-				Site_Builder::ec_labels(),
-				(string) ( $this->last_input( $result, 'ec' ) )
-			),
+			'site_create_ec_options'        => $this->ec_options( $available_ecs, $ec_value ),
 			'site_create_type_label'        => esc_html__( 'サイトのタイプ', GACHIREAI_TEXT_DOMAIN ),
 			'site_create_type_name'         => esc_attr( self::TYPE_FIELD ),
-			'site_create_type_options'      => $this->select_options(
-				Site_Builder::TYPE_CHOICES,
-				Site_Builder::type_labels(),
-				(string) ( $this->last_input( $result, 'type' ) )
-			),
+			'site_create_type_options'      => $this->type_options( $ec_value, $type_value ),
 			'site_create_article_label'     => esc_html__( '記事タイプ', GACHIREAI_TEXT_DOMAIN ),
 			'site_create_article_name'      => esc_attr( self::ARTICLE_FIELD ),
 			'site_create_article_options'   => $this->select_options(
 				Site_Builder::ARTICLE_CHOICES,
 				Site_Builder::article_labels(),
-				(string) ( $this->last_input( $result, 'article' ) )
+				$article_value,
+				Site_Builder::ARTICLE_DEFAULT
 			),
+			'site_create_plugins_label'    => esc_html__( 'プラグイン追加', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_plugins_name'     => esc_attr( self::PLUGINS_FIELD ),
+			'site_create_plugins'          => $this->plugin_options( $result ),
+			'site_create_install_theme_label'    => esc_html__( 'Cocoon', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_install_theme_name'     => esc_attr( self::INSTALL_THEME_FIELD ),
+			'site_create_install_theme_desc'     => esc_html__( 'インストールして有効化（インストール済みの場合は有効化のみ）', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_install_theme_checked'  => $this->last_checkbox( $result, 'install_theme' ),
+			'site_create_theme_settings_name'    => esc_attr( self::THEME_SETTINGS_FIELD ),
+			'site_create_theme_settings_desc'    => esc_html__( '推奨設定', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_theme_settings_checked' => $this->last_checkbox( $result, 'theme_settings' ),
+			'site_create_wp_settings_label'    => esc_html__( 'WordPress設定', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_wp_settings_name'     => esc_attr( self::WP_SETTINGS_FIELD ),
+			'site_create_wp_settings_desc'     => esc_html__( '実行する', GACHIREAI_TEXT_DOMAIN ),
+			'site_create_wp_settings_checked'  => $this->last_checkbox( $result, 'wp_settings' ),
 			'site_create_submit_label'      => esc_html__( 'AIサイト生成', GACHIREAI_TEXT_DOMAIN ),
 			'site_create_generate_action'   => esc_attr( self::AJAX_ACTION ),
 			'site_create_overlay_title'         => esc_html__( 'AIがサイトを生成しています', GACHIREAI_TEXT_DOMAIN ),
@@ -91,9 +118,9 @@ final class Site_Create extends Screen {
 		}
 		return $candidates;
 	}
-	private function select_options( array $choices, array $labels, string $selected ): array {
+	private function select_options( array $choices, array $labels, string $selected, string $default ): array {
 		if ( ! in_array( $selected, $choices, true ) ) {
-			$selected = Site_Builder::CHOICE_AUTO;
+			$selected = $default;
 		}
 		$options = array();
 		foreach ( $choices as $choice ) {
@@ -108,11 +135,83 @@ final class Site_Create extends Screen {
 		}
 		return $options;
 	}
-	private function last_input( $result, string $key ): string {
+	private function last_input( $result, string $key, string $default = '' ): string {
 		if ( ! is_array( $result ) || ! isset( $result['inputs'] ) || ! is_array( $result['inputs'] ) ) {
-			return Site_Builder::CHOICE_AUTO;
+			return $default;
 		}
-		return (string) ( $result['inputs'][ $key ] ?? Site_Builder::CHOICE_AUTO );
+		return (string) ( $result['inputs'][ $key ] ?? $default );
+	}
+	private function ec_options( array $available, string $selected ): array {
+		$labels  = Site_Builder::ec_labels();
+		$options = array();
+		foreach ( Site_Builder::EC_CHOICES as $ec ) {
+			$is_available = in_array( $ec, $available, true );
+			$options[] = array(
+				'opt_value'     => esc_attr( $ec ),
+				'opt_label'     => esc_html( (string) ( $labels[ $ec ] ?? $ec ) ),
+				'opt_selected'  => $is_available && $ec === $selected,
+				'opt_disabled'  => ! $is_available,
+				'opt_type_mode' => esc_attr( Site_Builder::type_mode_for_ec( $ec ) ),
+			);
+		}
+		return $options;
+	}
+	private function type_options( string $ec, string $selected ): array {
+		$labels  = Site_Builder::type_labels();
+		$mode    = Site_Builder::type_mode_for_ec( $ec );
+		$options = array();
+		foreach ( array( 'general', 'category', 'niche' ) as $type ) {
+			$type_mode = 'general' === $type ? 'all' : $type;
+			$options[] = array(
+				'opt_value'    => esc_attr( $type ),
+				'opt_label'    => esc_html( (string) ( $labels[ $type ] ?? $type ) ),
+				'opt_selected' => $type === $selected,
+				'opt_hidden'   => 'all' !== $type_mode && $type_mode !== $mode,
+				'opt_mode'     => esc_attr( $type_mode ),
+			);
+		}
+		return $options;
+	}
+	private function plugin_options( $result ): array {
+		$selected = $this->last_plugins( $result );
+		$options  = array();
+		foreach ( ( new Maintenance() )->plugin_definitions() as $slug => $definition ) {
+			$options[] = array(
+				'plug_slug'    => esc_attr( (string) $slug ),
+				'plug_name'    => esc_html( (string) ( $definition['name'] ?? $slug ) ),
+				'plug_checked' => in_array( (string) $slug, $selected, true ),
+			);
+		}
+		return $options;
+	}
+	private function last_plugins( $result ): array {
+		$all = array_map( 'strval', array_keys( ( new Maintenance() )->plugin_definitions() ) );
+		if ( ! is_array( $result ) || ! isset( $result['inputs'] ) || ! is_array( $result['inputs'] ) ) {
+			return $all;
+		}
+		$saved = $result['inputs']['plugins'] ?? array();
+		if ( ! is_array( $saved ) ) {
+			return array();
+		}
+		return array_values( array_filter( array_map( 'strval', $saved ), 'strlen' ) );
+	}
+	private function last_checkbox( $result, string $key ): bool {
+		if ( ! is_array( $result ) || ! isset( $result['inputs'] ) || ! is_array( $result['inputs'] ) ) {
+			return true;
+		}
+		return ! empty( $result['inputs'][ $key ] );
+	}
+	private function maintenance_inputs(): array {
+		$plugins = isset( $_POST[ self::PLUGINS_FIELD ] ) && is_array( $_POST[ self::PLUGINS_FIELD ] )
+			? array_map( 'sanitize_key', array_map( 'strval', wp_unslash( (array) $_POST[ self::PLUGINS_FIELD ] ) ) )
+			: array();
+		$inputs = array(
+			'plugins'        => array_values( array_filter( $plugins, 'strlen' ) ),
+			'install_theme'  => ! empty( $_POST[ self::INSTALL_THEME_FIELD ] ),
+			'theme_settings' => ! empty( $_POST[ self::THEME_SETTINGS_FIELD ] ),
+			'wp_settings'    => ! empty( $_POST[ self::WP_SETTINGS_FIELD ] ),
+		);
+		return $inputs;
 	}
 	private function result_model( $result ): array {
 		if ( ! is_array( $result ) ) {
@@ -201,12 +300,13 @@ final class Site_Create extends Screen {
 		}
 		$user_id = get_current_user_id();
 		$theme   = isset( $_POST[ self::THEME_FIELD ] ) ? sanitize_text_field( wp_unslash( (string) $_POST[ self::THEME_FIELD ] ) ) : '';
-		$ec      = isset( $_POST[ self::EC_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::EC_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
-		$type    = isset( $_POST[ self::TYPE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::TYPE_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
-		$article = isset( $_POST[ self::ARTICLE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::ARTICLE_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
+		$ec      = isset( $_POST[ self::EC_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::EC_FIELD ] ) ) : '';
+		$type    = isset( $_POST[ self::TYPE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::TYPE_FIELD ] ) ) : Site_Builder::TYPE_DEFAULT;
+		$article = isset( $_POST[ self::ARTICLE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::ARTICLE_FIELD ] ) ) : Site_Builder::ARTICLE_DEFAULT;
+		$maintenance = $this->maintenance_inputs();
 		$progress = new Site_Create_Progress( $user_id );
 		try {
-			$result = ( new Site_Builder() )->build( $theme, $ec, $type, $article, $progress->callback() );
+			$result = ( new Site_Builder() )->build( $theme, $ec, $type, $article, $maintenance, $progress->callback() );
 			$progress->finish();
 			delete_transient( self::THEMES_TRANSIENT . $user_id );
 			$this->send_form_html(
@@ -265,16 +365,21 @@ final class Site_Create extends Screen {
 	private function handle_generate(): void {
 		$user_id = get_current_user_id();
 		$theme   = isset( $_POST[ self::THEME_FIELD ] ) ? sanitize_text_field( wp_unslash( (string) $_POST[ self::THEME_FIELD ] ) ) : '';
-		$ec      = isset( $_POST[ self::EC_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::EC_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
-		$type    = isset( $_POST[ self::TYPE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::TYPE_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
-		$article = isset( $_POST[ self::ARTICLE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::ARTICLE_FIELD ] ) ) : Site_Builder::CHOICE_AUTO;
+		$ec      = isset( $_POST[ self::EC_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::EC_FIELD ] ) ) : '';
+		$type    = isset( $_POST[ self::TYPE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::TYPE_FIELD ] ) ) : Site_Builder::TYPE_DEFAULT;
+		$article = isset( $_POST[ self::ARTICLE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::ARTICLE_FIELD ] ) ) : Site_Builder::ARTICLE_DEFAULT;
+		$maintenance = $this->maintenance_inputs();
 		$inputs = array(
-			'ec'      => $ec,
-			'type'    => $type,
-			'article' => $article,
+			'ec'             => $ec,
+			'type'           => $type,
+			'article'        => $article,
+			'plugins'        => $maintenance['plugins'],
+			'install_theme'  => $maintenance['install_theme'],
+			'theme_settings' => $maintenance['theme_settings'],
+			'wp_settings'    => $maintenance['wp_settings'],
 		);
 		try {
-			$result = ( new Site_Builder() )->build( $theme, $ec, $type, $article );
+			$result = ( new Site_Builder() )->build( $theme, $ec, $type, $article, $maintenance );
 			set_transient(
 				self::RESULT_TRANSIENT . $user_id,
 				array(

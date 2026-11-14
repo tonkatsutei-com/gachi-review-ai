@@ -252,7 +252,13 @@ final class Network_Setup {
 		$block = $begin . "\n" . implode( "\n", $lines ) . "\n" . $end;
 		$pattern = '/' . preg_quote( $begin, '/' ) . '.*?' . preg_quote( $end, '/' ) . '/s';
 		if ( 1 === preg_match( $pattern, $original ) ) {
-			$new = (string) preg_replace( $pattern, $block, $original );
+			$new = (string) preg_replace_callback(
+				$pattern,
+				static function () use ( $block ): string {
+					return $block;
+				},
+				$original
+			);
 		} else {
 			$new = ( '' === trim( $original ) ? '' : rtrim( $original ) . "\n\n" ) . $block . "\n";
 		}

@@ -35,8 +35,10 @@ final class Data_Setup extends Screen {
 	private const NONCE_ACTION = 'gachireai_save_data_setup';
 	private const ACTION_FIELD = 'gachireai_action';
 	private const SAVED_ARG = 'gachireai_data_saved';
+	private const ERROR_ARG = 'gachireai_data_error';
 	private const PROPOSE_FIELD = 'gachireai_propose';
 	private const SAVE_FIELD = 'gachireai_save';
+	private array $save_errors = array();
 	public function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -72,6 +74,10 @@ final class Data_Setup extends Screen {
 			}
 		}
 		$this->save();
+		if ( array() !== $this->save_errors ) {
+			wp_safe_redirect( Tabs::url( Tabs::TAB_REVIEW, array( self::ERROR_ARG => '1' ) ) );
+			exit;
+		}
 		wp_safe_redirect( Tabs::url( Tabs::TAB_REVIEW, array( self::SAVED_ARG => '1' ) ) );
 		exit;
 	}
@@ -81,6 +87,20 @@ final class Data_Setup extends Screen {
 		$section = isset( $_POST[ self::SAVE_FIELD ] ) ? sanitize_key( wp_unslash( (string) $_POST[ self::SAVE_FIELD ] ) ) : '';
 		if ( ! in_array( $section, $this->groups(), true ) ) {
 			$section = self::AI_REVIEW_GROUP;
+		}
+		$ai_review_errors = $this->save_errors[ self::AI_REVIEW_GROUP ] ?? array();
+		if ( array() !== $ai_review_errors ) {
+			$error_messages = array();
+			foreach ( $ai_review_errors as $error ) {
+				$error_messages[] = $this->message( 'error', esc_html( $error ) );
+			}
+			$this->send_form_html(
+				fn(): string => $this->render_template_string(
+					'admin/data-setup-form',
+					$this->form_fields( array( self::AI_REVIEW_GROUP => $error_messages ), $this->posted_values() )
+				)
+			);
+			return;
 		}
 		$message = $saved
 			? $this->message( 'success', esc_html__( '保存しました。', GACHIREAI_TEXT_DOMAIN ) )
@@ -193,14 +213,26 @@ final class Data_Setup extends Screen {
 			$clean   = $this->sanitize( $posted, $current, $group );
 			if ( self::AI_REVIEW_GROUP === $group && Status::capabilities()->is_free() ) {
 				unset( $clean[ Ai_Review::KEY_MODE ] );
+				$clean[ Ai_Review::KEY_COUNT ]         = (string) Ai_Review::FREE_MAX_COUNT;
+				$clean[ Ai_Review::KEY_PUBLISHED_MAX ] = (string) Ai_Review::FREE_MAX_COUNT;
+			}
+			if ( self::AI_REVIEW_GROUP === $group ) {
+				$min = (int) ( $clean[ Ai_Review::KEY_COUNT ] ?? Ai_Review::DEFAULT_COUNT );
+				$max = (int) ( $clean[ Ai_Review::KEY_PUBLISHED_MAX ] ?? Ai_Review::DEFAULT_PUBLISHED_MAX );
+				if ( $max < $min ) {
+					$this->save_errors[ self::AI_REVIEW_GROUP ][] = Ai_Review::published_max_error();
+					continue;
+				}
 			}
 			$settings->set( $group, array_merge( $current, $clean ) );
 			if ( '' === $section || $section === $group ) {
 				$this->record_connection( $group, $settings );
 			}
 		}
-		$this->record_setting_save( __( 'レビュー設定', GACHIREAI_TEXT_DOMAIN ) );
-		return true;
+		if ( array() === $this->save_errors ) {
+			$this->record_setting_save( __( 'レビュー設定', GACHIREAI_TEXT_DOMAIN ) );
+		}
+		return array() === $this->save_errors;
 	}
 	private function record_connection( string $group, Settings $settings ): void {
 		if ( self::YOUTUBE_GROUP === $group ) {
@@ -249,6 +281,9 @@ final class Data_Setup extends Screen {
 	}
 	private function notices(): array {
 		$notices = array();
+		if ( isset( $_GET[ self::ERROR_ARG ] ) ) {
+			$notices[] = $this->notice( 'error', esc_html( Ai_Review::published_max_error() ) );
+		}
 		foreach ( $this->status_notices() as $notice ) {
 			$notices[] = $notice;
 		}
@@ -345,11 +380,11 @@ final class Data_Setup extends Screen {
 			$this->section(
 				self::AI_REVIEW_GROUP,
 				__( '掲載数とAIによるレビュー生成', GACHIREAI_TEXT_DOMAIN ),
-				__( '記事に掲載するレビューの最低数と、AIによるレビュー生成を設定します。', GACHIREAI_TEXT_DOMAIN ),
+				__( '記事に掲載するレビューの最低数・最大数と、AIによるレビュー生成を設定します。', GACHIREAI_TEXT_DOMAIN ),
 				array(
 					array(
 						'block_title'    => '',
-						'fields'         => $this->form( self::AI_REVIEW_GROUP )->build_list( $ai_review, array( 'count', 'mode' ), self::AI_REVIEW_GROUP ),
+						'fields'         => $this->form( self::AI_REVIEW_GROUP )->build_list( $ai_review, array( 'count', 'published_max', 'mode' ), self::AI_REVIEW_GROUP ),
 						'block_buttons'  => array(),
 						'block_messages' => array(),
 					),
@@ -707,7 +742,15 @@ final class Data_Setup extends Screen {
 				'min'         => Ai_Review::MIN_COUNT,
 				'max'         => Ai_Review::max_count(),
 				'default'     => (string) Ai_Review::DEFAULT_COUNT,
-				'description' => __( "記事に掲載するレビューの最低数です。\n使用できるレビュー（素材として使えるレビュー）がこの数に満たない場合の挙動を、下の「AI生成」で選びます。\n使用できるレビューがこの数より多くある場合は、この数で打ち切らず潤沢に使用します。", GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( "記事に掲載するレビューの最低数です。\n使用できるレビュー（素材として使えるレビュー）がこの数に満たない場合の挙動を、下の「AI生成」で選びます。\n「掲載最大数」はこの数以上にしてください。", GACHIREAI_TEXT_DOMAIN ),
+			),
+			Ai_Review::KEY_PUBLISHED_MAX => array(
+				'label'       => __( '掲載最大数', GACHIREAI_TEXT_DOMAIN ),
+				'type'        => 'number',
+				'min'         => Ai_Review::MIN_COUNT,
+				'max'         => Ai_Review::max_count(),
+				'default'     => (string) ( Status::capabilities()->is_free() ? Ai_Review::FREE_MAX_COUNT : Ai_Review::DEFAULT_PUBLISHED_MAX ),
+				'description' => __( "記事に掲載するレビューの最大数です。\n使用できるレビューが多い場合でも、この数までを使用します。\n「最低掲載数」以上にしてください（それより小さい値は保存できません）。", GACHIREAI_TEXT_DOMAIN ),
 			),
 			Ai_Review::KEY_MODE  => array(
 				'label'        => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),

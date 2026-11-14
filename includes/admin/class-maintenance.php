@@ -39,6 +39,7 @@ final class Maintenance extends Screen
 	private const NETWORK_CONFIRM_FIELD = 'gachireai_network_confirm';
 	private const NETWORK_SUBDOMAIN_FIELD = 'gachireai_network_subdomain';
 	private const NETWORK_ERROR_TRANSIENT = 'gachireai_network_error_';
+	private const NETWORK_SECTION_ANCHOR = 'gachireai-section-network';
 	public const ACTION_INSTALL_PLUGIN = 'gachireai_maintenance_install_plugin';
 	private const NONCE_INSTALL_PLUGIN = 'gachireai_maintenance_install_plugin';
 	private const INSTALL_PLUGIN_FIELD = 'gachireai_install_plugin';
@@ -155,10 +156,10 @@ final class Maintenance extends Screen
 		$confirmed = isset($_POST[self::NETWORK_CONFIRM_FIELD])
 			&& '1' === sanitize_key(wp_unslash((string) $_POST[self::NETWORK_CONFIRM_FIELD]));
 		if (! $confirmed) {
-			$this->redirect('network_unconfirmed');
+			$this->redirect('network_unconfirmed', array(), self::NETWORK_SECTION_ANCHOR);
 		}
 		if (! Status::capabilities()->can_use_multisite()) {
-			$this->redirect('network_not_pro');
+			$this->redirect('network_not_pro', array(), self::NETWORK_SECTION_ANCHOR);
 		}
 		$step = isset($_POST[self::NETWORK_STEP_FIELD])
 			? sanitize_key(wp_unslash((string) $_POST[self::NETWORK_STEP_FIELD]))
@@ -174,7 +175,7 @@ final class Maintenance extends Screen
 					esc_html__('このサイトには公開から1か月以上経過した投稿があるため、サブディレクトリ型は選択できません。サブドメイン型を選んでください。', GACHIREAI_TEXT_DOMAIN),
 					300
 				);
-				$this->redirect('network_error');
+				$this->redirect('network_error', array(), self::NETWORK_SECTION_ANCHOR);
 			}
 			try {
 				$setup->record_and_deactivate_plugins();
@@ -197,7 +198,7 @@ final class Maintenance extends Screen
 				300
 			);
 		}
-		$this->redirect($result);
+		$this->redirect($result, array(), self::NETWORK_SECTION_ANCHOR);
 	}
 	public function handle_install_plugin(): void
 	{
@@ -301,7 +302,7 @@ final class Maintenance extends Screen
 			$this->redirect('theme_settings_error');
 		}
 	}
-	private function apply_wp_settings(): void
+	public function apply_wp_settings(): void
 	{
 		if (! in_array('ja', get_available_languages(), true)) {
 			if (! function_exists('wp_download_language_pack')) {
@@ -335,7 +336,7 @@ final class Maintenance extends Screen
 	{
 		return is_multisite() ? '/blog/%postname%/' : '/%postname%/';
 	}
-	private function apply_theme_settings(): void
+	public function apply_theme_settings(): void
 	{
 		set_theme_mod('all_thumbnail_visible', 1);
 		set_theme_mod('facebook_ogp_enable', 0);
@@ -374,12 +375,12 @@ final class Maintenance extends Screen
 		}
 		return '';
 	}
-	private function is_cocoon_active(): bool
+	public function is_cocoon_active(): bool
 	{
 		return 0 === strpos(get_stylesheet(), 'cocoon')
 			|| 0 === strpos(get_template(), 'cocoon');
 	}
-	private function install_and_activate_plugin(array $definition): string
+	public function install_and_activate_plugin(array $definition): string
 	{
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -419,7 +420,7 @@ final class Maintenance extends Screen
 		}
 		return $plugin_file;
 	}
-	private function enable_plugin_auto_update(string $plugin_file): void
+	public function enable_plugin_auto_update(string $plugin_file): void
 	{
 		$basename     = plugin_basename($plugin_file);
 		$auto_updates = (array) get_site_option('auto_update_plugins', array());
@@ -429,7 +430,7 @@ final class Maintenance extends Screen
 		$auto_updates[] = $basename;
 		update_site_option('auto_update_plugins', array_values(array_unique($auto_updates)));
 	}
-	private function update_plugin_if_available(string $plugin_file): bool
+	public function update_plugin_if_available(string $plugin_file): bool
 	{
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -465,7 +466,7 @@ final class Maintenance extends Screen
 		}
 		return true;
 	}
-	private function install_and_activate_theme(): void
+	public function install_and_activate_theme(): void
 	{
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/theme.php';
@@ -524,7 +525,7 @@ final class Maintenance extends Screen
 			),
 		);
 	}
-	private function update_theme_if_available(): bool
+	public function update_theme_if_available(): bool
 	{
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/theme.php';
@@ -890,7 +891,7 @@ final class Maintenance extends Screen
 		}
 		return array();
 	}
-	private function plugin_definitions(): array
+	public function plugin_definitions(): array
 	{
 		return array(
 			'image-size-manager'     => array(
@@ -1042,12 +1043,15 @@ final class Maintenance extends Screen
 		$definitions = $this->plugin_definitions();
 		return isset($definitions[$slug]) ? $definitions[$slug]['name'] : '';
 	}
-	private function redirect(string $result, array $args = array()): void
+	private function redirect(string $result, array $args = array(), string $fragment = ''): void
 	{
 		$args = array_merge(array(self::RESULT_ARG => $result), $args);
 		$url = $this->is_common_request()
 			? Common_Tabs::url(Common_Tabs::TAB_MAINTENANCE, $args)
 			: Tabs::url(Tabs::TAB_MAINTENANCE, $args);
+		if ('' !== $fragment) {
+			$url .= '#' . $fragment;
+		}
 		wp_safe_redirect($url);
 		exit;
 	}

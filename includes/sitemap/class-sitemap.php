@@ -53,6 +53,7 @@ final class Sitemap {
 		$urls  = array();
 		$sites = get_sites(
 			array(
+				'public'   => 1,
 				'archived' => 0,
 				'spam'     => 0,
 				'deleted'  => 0,

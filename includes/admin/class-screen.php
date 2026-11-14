@@ -233,7 +233,6 @@ abstract class Screen {
 		}
 	}
 	final protected function send_form_html( callable $renderer, array $extra = array() ): void {
-		Page_Cache::flush();
 		try {
 			$html = (string) $renderer();
 		} catch ( \Throwable $e ) {

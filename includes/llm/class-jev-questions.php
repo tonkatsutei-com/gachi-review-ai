@@ -5,19 +5,26 @@ final class Jev_Questions {
 	public const SET_V2 = 'v2';
 	public const SET_V3 = 'v3';
 	public const SET_V4 = 'v4';
+	public const SET_V5 = 'v5';
+	public const SET_V6 = 'v6';
 	public const THRESHOLD_EXCLUDE = 0.35;
 	public const THRESHOLD_EXCLUDE_EC = 0.20;
 	public const THRESHOLD_ADOPT = 0.65;
+	public const THRESHOLD_TARGET_PRODUCT = 0.35;
+	public const THRESHOLD_USABLE = 0.5;
 	public const THRESHOLD_CRITICISM = 0.65;
 	public const VERDICT_EXCLUDE = 'exclude';
 	public const VERDICT_HOLD = 'hold';
 	public const VERDICT_ADOPT = 'adopt';
+	public const VERDICT_CLEAN = 'clean';
 	public const VERDICT_NONE = '';
 	public const ID_PRODUCT_REVIEW = 'is_product_review';
 	public const ID_AD_OR_PROMO = 'is_ad_or_promo';
 	public const ID_SENTIMENT = 'product_sentiment';
 	public const ID_CRITICISM = 'has_criticism';
 	public const ID_DELIVERY_ISSUE = 'has_delivery_issue';
+	public const ID_TARGET_PRODUCT = 'is_target_product';
+	public const ID_USABLE_REVIEW = 'has_usable_review';
 	public const SENTIMENT_LEVELS = array( '強く否定', 'やや否定', '中立（商品の評価に触れない）', 'やや肯定', '強く肯定' );
 	public const REVIEW_RATIO_LEVELS = array(
 		'0%（商品そのものの話なし）',
@@ -30,6 +37,7 @@ final class Jev_Questions {
 		self::VERDICT_EXCLUDE => '除外',
 		self::VERDICT_HOLD    => '保留',
 		self::VERDICT_ADOPT   => '採用',
+		self::VERDICT_CLEAN   => '要クリーニング',
 		self::VERDICT_NONE    => '判定なし',
 	);
 	public static function set_v3(): array {
@@ -56,6 +64,22 @@ final class Jev_Questions {
 				'instructions' => 'state は配送・梱包・ショップの対応・返品手続きへの不満や問題（遅延・破損・対応の悪さなど）を含むか。配送や梱包に軽く触れているだけ、褒めているだけの場合は no。',
 			),
 		);
+	}
+	public static function set_v5(): array {
+		$questions = self::set_v4();
+		$questions[ self::ID_TARGET_PRODUCT ] = array(
+			'type'         => 'noul',
+			'instructions' => 'state は、「商品名:」に示された商品についてのレビューか。別の商品についての話、配送・梱包・ショップ対応・返品・価格だけの話、商品と無関係な話題の場合は no。',
+		);
+		return $questions;
+	}
+	public static function set_v6(): array {
+		$questions = self::set_v5();
+		$questions[ self::ID_USABLE_REVIEW ] = array(
+			'type'         => 'noul',
+			'instructions' => 'state に、商品そのもの（品質・性能・使い勝手・満足度・作り）への具体的な評価・感想が、たとえ一部でも含まれているか。配送・梱包・ショップ対応・返品・価格・広告・別商品の話しか含まず、商品そのものへの評価がまったく無い場合は no。',
+		);
+		return $questions;
 	}
 	public static function set_v4(): array {
 		return array(
@@ -84,16 +108,22 @@ final class Jev_Questions {
 		);
 	}
 	public static function verdict( array $answers ): string {
-		return self::verdict_with( $answers, self::THRESHOLD_EXCLUDE, self::THRESHOLD_ADOPT );
+		return self::verdict_with( $answers, self::THRESHOLD_EXCLUDE, self::THRESHOLD_ADOPT, self::THRESHOLD_TARGET_PRODUCT );
 	}
-	public static function verdict_with( array $answers, float $exclude, float $adopt ): string {
+	public static function verdict_with( array $answers, float $exclude, float $adopt, float $target_exclude = self::THRESHOLD_TARGET_PRODUCT ): string {
 		$product = self::ratio( $answers );
 		$promo   = self::probability( $answers, self::ID_AD_OR_PROMO );
+		$target  = self::probability( $answers, self::ID_TARGET_PRODUCT );
+		$usable  = self::probability( $answers, self::ID_USABLE_REVIEW );
 		if ( null === $product || null === $promo ) {
 			return self::VERDICT_NONE;
 		}
-		if ( $product < $exclude || $promo > $adopt ) {
+		if ( null !== $target && 0.0 < $target_exclude && $target < $target_exclude ) {
 			return self::VERDICT_EXCLUDE;
+		}
+		$salvageable = null !== $usable && self::THRESHOLD_USABLE <= $usable;
+		if ( $product < $exclude || $promo > $adopt ) {
+			return $salvageable ? self::VERDICT_CLEAN : self::VERDICT_EXCLUDE;
 		}
 		if ( $product > $adopt && $promo < $exclude ) {
 			return self::VERDICT_ADOPT;
@@ -102,13 +132,18 @@ final class Jev_Questions {
 	}
 	public static function verdict_for( array $answers, string $source ): string {
 		$thresholds = self::thresholds_for( $source );
-		return self::verdict_with( $answers, $thresholds['exclude'], $thresholds['adopt'] );
+		return self::verdict_with( $answers, $thresholds['exclude'], $thresholds['adopt'], $thresholds['target'] );
 	}
 	public static function thresholds_for( string $source ): array {
 		return array(
 			'exclude' => self::is_ec( $source ) ? self::THRESHOLD_EXCLUDE_EC : self::THRESHOLD_EXCLUDE,
 			'adopt'   => self::THRESHOLD_ADOPT,
+			'target'  => self::is_by_product_source( $source ) ? 0.0 : self::THRESHOLD_TARGET_PRODUCT,
+			'usable'  => self::THRESHOLD_USABLE,
 		);
+	}
+	private static function is_by_product_source( string $source ): bool {
+		return self::is_ec( $source ) || in_array( $source, array( 'x', 'instagram', 'facebook' ), true );
 	}
 	private static function is_ec( string $source ): bool {
 		return 'ec' === $source;
@@ -144,6 +179,9 @@ final class Jev_Questions {
 	}
 	public static function is_excluded( string $verdict ): bool {
 		return self::VERDICT_EXCLUDE === $verdict;
+	}
+	public static function is_clean( string $verdict ): bool {
+		return self::VERDICT_CLEAN === $verdict;
 	}
 	private static function probability( array $answers, string $id ): ?float {
 		if ( ! isset( $answers[ $id ] ) || ! is_array( $answers[ $id ] ) ) {

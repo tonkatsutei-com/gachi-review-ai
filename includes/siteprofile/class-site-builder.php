@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\SiteProfile;
+use Tonkatsutei\Gachi_Review_AI\Admin\Maintenance;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Article\Ai_Review;
 use Tonkatsutei\Gachi_Review_AI\Article\Article_Generator;
 use Tonkatsutei\Gachi_Review_AI\Article\Dialogue_Character;
+use Tonkatsutei\Gachi_Review_AI\Article\Source_Settings;
 use Tonkatsutei\Gachi_Review_AI\Common\Store as Common_Store;
 use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
@@ -21,9 +23,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 final class Site_Builder {
 	public const CHOICE_AUTO = 'auto';
-	public const EC_CHOICES = array( self::CHOICE_AUTO, Product_Selector::EC_RAKUTEN, Product_Selector::EC_AMAZON, Product_Selector::EC_YAHOO );
-	public const TYPE_CHOICES = array( self::CHOICE_AUTO, 'general', 'category', 'niche' );
-	public const ARTICLE_CHOICES = array( self::CHOICE_AUTO, 'summary', 'quote', 'experience', 'dialogue' );
+	public const EC_CHOICES = array( Product_Selector::EC_RAKUTEN, Product_Selector::EC_AMAZON, Product_Selector::EC_YAHOO );
+	public const ARTICLE_CHOICES = array( 'summary', 'quote', 'experience', 'dialogue' );
+	public const TYPE_DEFAULT = 'category';
+	public const ARTICLE_DEFAULT = 'dialogue';
 	private const TIME_LIMIT = 300;
 	private const STEP_TOTAL = 8;
 	public function preflight(): array {
@@ -48,7 +51,7 @@ final class Site_Builder {
 		}
 		return $errors;
 	}
-	public function build( string $theme, string $ec_choice, string $type_choice, string $article_choice, ?callable $progress = null ): array {
+	public function build( string $theme, string $ec_choice, string $type_choice, string $article_choice, array $maintenance = array(), ?callable $progress = null ): array {
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( self::TIME_LIMIT );
 		}
@@ -97,7 +100,7 @@ final class Site_Builder {
 			$blog_id               = $this->insert_site( $domain, $path, (string) $site_elements['site_name'], $user_id );
 			switch_to_blog( $blog_id );
 			try {
-				$result = $this->build_in_site( $theme, $ec, $type, $article, $profile_parts, $user_id, $progress );
+				$result = $this->build_in_site( $theme, $ec, $type, $article, $profile_parts, $user_id, $maintenance, $progress );
 			} catch ( \Throwable $e ) {
 				restore_current_blog();
 				wp_delete_site( $blog_id );
@@ -148,7 +151,7 @@ final class Site_Builder {
 			throw $e;
 		}
 	}
-	private function build_in_site( string $theme, string $ec, string $type, string $article, array $profile_parts, int $user_id, ?callable $progress = null ): array {
+	private function build_in_site( string $theme, string $ec, string $type, string $article, array $profile_parts, int $user_id, array $maintenance = array(), ?callable $progress = null ): array {
 		$this->notify( $progress, __( '設定を保存中...', GACHIREAI_TEXT_DOMAIN ), 4 );
 		$scope = $this->prepare_scope( $ec, $type, $theme, (string) ( $profile_parts['keywords'] ?? '' ) );
 		$settings = new Settings();
@@ -166,6 +169,7 @@ final class Site_Builder {
 				Ai_Review::KEY_COUNT => Ai_Review::DEFAULT_COUNT,
 			)
 		);
+		$settings->set( Source_Settings::PARTNER_GROUP, Source_Settings::all_enabled_values() );
 		$profile = new Site_Profile();
 		$profile->save(
 			array(
@@ -192,6 +196,10 @@ final class Site_Builder {
 				'products'  => (string) ( $scope['products'] ?? '' ),
 			)
 		);
+		if ( array() !== $maintenance ) {
+			$this->notify( $progress, __( '推奨プラグイン・テーマ・WordPress設定を適用中...', GACHIREAI_TEXT_DOMAIN ), 4 );
+			$this->apply_maintenance( $maintenance );
+		}
 		$this->delete_sample_content();
 		$this->notify( $progress, __( '固定ページを生成中...', GACHIREAI_TEXT_DOMAIN ), 5 );
 		$top_id = Top_Page::generate( $profile );
@@ -229,6 +237,10 @@ final class Site_Builder {
 				)
 			);
 		}
+		if ( ! empty( $maintenance['theme_settings'] ) ) {
+			$this->notify( $progress, __( 'Cocoon の推奨設定を適用中...', GACHIREAI_TEXT_DOMAIN ), 6 );
+			( new Maintenance() )->apply_theme_settings();
+		}
 		$this->notify( $progress, __( '最初の記事を生成・公開中...', GACHIREAI_TEXT_DOMAIN ), 7 );
 		$first_post = $this->generate_first_post( $user_id );
 		Event_Logger::record(
@@ -249,6 +261,32 @@ final class Site_Builder {
 			'persona_name'   => (string) ( $profile_parts['my_persona']['name'] ?? '' ),
 			'scope_label'    => (string) ( $scope['category'] ?? '' ),
 		);
+	}
+	private function apply_maintenance( array $maintenance ): void {
+		$maintenance_api = new Maintenance();
+		if ( ! empty( $maintenance['install_theme'] ) && ! $maintenance_api->is_cocoon_active() ) {
+			$maintenance_api->install_and_activate_theme();
+			$maintenance_api->update_theme_if_available();
+		}
+		if ( ! empty( $maintenance['wp_settings'] ) ) {
+			$maintenance_api->apply_wp_settings();
+		}
+		$slugs = isset( $maintenance['plugins'] ) && is_array( $maintenance['plugins'] )
+			? $maintenance['plugins']
+			: array();
+		if ( array() === $slugs ) {
+			return;
+		}
+		$definitions = $maintenance_api->plugin_definitions();
+		foreach ( $slugs as $slug ) {
+			$slug = sanitize_key( (string) $slug );
+			if ( ! isset( $definitions[ $slug ] ) ) {
+				continue;
+			}
+			$plugin_file = $maintenance_api->install_and_activate_plugin( $definitions[ $slug ] );
+			$maintenance_api->enable_plugin_auto_update( $plugin_file );
+			$maintenance_api->update_plugin_if_available( $plugin_file );
+		}
 	}
 	private function generate_dialogue_mentee( Settings $settings, Site_Profile $profile ): void {
 		$mentee = ( new Dialogue_Character( $settings, $profile ) )->generate_mentee();
@@ -463,7 +501,7 @@ final class Site_Builder {
 		}
 	}
 	private function insert_site( string $domain, string $path, string $title, int $user_id ): int {
-		$blog_id = wpmu_create_blog( $domain, $path, $title, $user_id, array(), get_current_network_id() );
+		$blog_id = wpmu_create_blog( $domain, $path, $title, $user_id, array( 'public' => 1 ), get_current_network_id() );
 		if ( is_wp_error( $blog_id ) ) {
 			throw new \RuntimeException(
 				sprintf(
@@ -515,7 +553,7 @@ final class Site_Builder {
 		$slug = substr( $slug, 0, 40 );
 		return '' !== $slug ? $slug : 'site';
 	}
-	private function available_ecs(): array {
+	public function available_ecs(): array {
 		$store = new Common_Store();
 		$ecs   = array();
 		foreach ( array( Product_Selector::EC_RAKUTEN, Product_Selector::EC_YAHOO, Product_Selector::EC_AMAZON ) as $ec ) {
@@ -527,9 +565,6 @@ final class Site_Builder {
 	}
 	private function resolve_ec( string $choice ): string {
 		$available = $this->available_ecs();
-		if ( self::CHOICE_AUTO === $choice ) {
-			return $available[ array_rand( $available ) ];
-		}
 		$ec = Product_Selector::normalize_ec( $choice );
 		if ( ! in_array( $ec, $available, true ) ) {
 			throw new \RuntimeException(
@@ -542,29 +577,31 @@ final class Site_Builder {
 		return $ec;
 	}
 	private function resolve_type( string $choice, string $ec ): string {
-		$amazon_niche_only = Product_Selector::EC_AMAZON === $ec && ! $this->amazon_supports_genres();
-		if ( self::CHOICE_AUTO !== $choice && in_array( $choice, array( 'general', 'category', 'niche' ), true ) ) {
-			if ( $amazon_niche_only && 'niche' !== $choice ) {
-				throw new \RuntimeException( __( 'Amazon では「総合」「カテゴリー限定」を選べません。「ニッチ」にするか、別のメインECを選んでください。', GACHIREAI_TEXT_DOMAIN ) );
-			}
-			return $choice;
+		if ( ! in_array( $choice, self::type_choices_for_ec( $ec ), true ) ) {
+			throw new \RuntimeException( __( 'サイトのタイプの指定が不正です。', GACHIREAI_TEXT_DOMAIN ) );
 		}
-		if ( $amazon_niche_only ) {
-			return 'niche';
-		}
-		$types = array( 'general', 'category', 'niche' );
-		return $types[ array_rand( $types ) ];
+		return $choice;
 	}
-	private function amazon_supports_genres(): bool {
+	public static function type_choices_for_ec( string $ec ): array {
+		return 'niche' === self::type_mode_for_ec( $ec )
+			? array( 'general', 'niche' )
+			: array( 'general', 'category' );
+	}
+	public static function type_mode_for_ec( string $ec ): string {
+		return Product_Selector::EC_AMAZON === $ec && ! self::amazon_supports_genres()
+			? 'niche'
+			: 'category';
+	}
+	public static function type_default_for_ec( string $ec ): string {
+		return 'niche' === self::type_mode_for_ec( $ec ) ? 'niche' : 'category';
+	}
+	private static function amazon_supports_genres(): bool {
 		$amazon   = (array) ( new Common_Store() )->get( 'amazon', array() );
 		$free     = ! empty( $amazon['use_free_amzn_creators'] );
 		$creators = ! empty( $amazon['use_creators_api'] );
 		return ! ( $free && ! $creators );
 	}
 	private function resolve_article( string $choice ): string {
-		if ( self::CHOICE_AUTO === $choice ) {
-			return 'summary';
-		}
 		if ( ! in_array( $choice, array( 'summary', 'quote', 'experience', 'dialogue' ), true ) ) {
 			throw new \RuntimeException( __( '記事タイプの指定が不正です。', GACHIREAI_TEXT_DOMAIN ) );
 		}

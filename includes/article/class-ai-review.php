@@ -7,13 +7,15 @@ final class Ai_Review {
 	public const GROUP = 'ai_review';
 	public const KEY_MODE = 'mode';
 	public const KEY_COUNT = 'count';
+	public const KEY_PUBLISHED_MAX = 'published_max';
 	public const MODE_OFF = 'off';
 	public const MODE_FILL = 'fill';
 	public const MODE_ONLY = 'only';
 	public const DEFAULT_MODE = self::MODE_OFF;
 	public const DEFAULT_COUNT = 5;
+	public const DEFAULT_PUBLISHED_MAX = 6;
 	public const MIN_COUNT = 1;
-	public const MAX_COUNT = 10;
+	public const MAX_COUNT = 16;
 	public const FREE_MAX_COUNT = 5;
 	public const MODE_VALUES = array( self::MODE_OFF, self::MODE_FILL, self::MODE_ONLY );
 	public static function mode_options(): array {
@@ -68,14 +70,26 @@ final class Ai_Review {
 		return self::MODE_ONLY === self::mode();
 	}
 	public static function count(): int {
-		$count = self::read_count();
 		if ( Status::capabilities()->is_free() ) {
-			return min( self::FREE_MAX_COUNT, $count );
+			return self::FREE_MAX_COUNT;
 		}
-		return $count;
+		return self::read_count();
 	}
 	public static function max_count(): int {
 		return Status::capabilities()->is_free() ? self::FREE_MAX_COUNT : self::MAX_COUNT;
+	}
+	public static function published_max(): int {
+		if ( Status::capabilities()->is_free() ) {
+			return self::FREE_MAX_COUNT;
+		}
+		$value = (string) ( self::values()[ self::KEY_PUBLISHED_MAX ] ?? '' );
+		if ( '' === $value || ! ctype_digit( $value ) ) {
+			return self::DEFAULT_PUBLISHED_MAX;
+		}
+		return max( self::MIN_COUNT, min( self::MAX_COUNT, (int) $value ) );
+	}
+	public static function published_max_error(): string {
+		return __( '掲載最大数は掲載最低数以上にしてください。', GACHIREAI_TEXT_DOMAIN );
 	}
 	private static function read_count(): int {
 		$value = (string) ( self::values()[ self::KEY_COUNT ] ?? '' );
