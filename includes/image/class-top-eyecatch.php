@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Image;
 use Tonkatsutei\Gachi_Review_AI\Event_Logger;
+use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 final class Top_Eyecatch {
@@ -14,10 +15,17 @@ final class Top_Eyecatch {
 		$this->profile  = $profile ?? new Site_Profile();
 	}
 	public function is_available(): bool {
-		return Manager::is_available( $this->settings->image(), $this->settings );
+		$image = $this->settings->image();
+		if ( Image_Catalog::is_simple_style( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) ) ) {
+			return Simple_Image::is_available();
+		}
+		return Manager::is_available( $image, $this->settings );
 	}
 	public function generate( ?string $site_name = null, ?string $description = null ): array {
 		$image   = $this->settings->image();
+		if ( Image_Catalog::is_simple_style( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) ) ) {
+			return $this->generate_simple( $image, $site_name, $description );
+		}
 		$api_key = $this->settings->image_api_key( $image );
 		if ( '' === $api_key ) {
 			throw new \RuntimeException( __( '画像生成AIの API キーが未設定です。「AI設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ) );
@@ -119,6 +127,95 @@ final class Top_Eyecatch {
 			(int) round( ( microtime( true ) - $started ) * 1000 )
 		);
 		$message = __( 'トップページ用アイキャッチを生成しました。［保存］でトップページに反映されます。', GACHIREAI_TEXT_DOMAIN );
+		if ( array() !== $warnings ) {
+			$message .= ' ' . implode( ' / ', $warnings );
+		}
+		return array(
+			'attachment_id' => $attachment_id,
+			'url'           => (string) wp_get_attachment_image_url( $attachment_id, 'full' ),
+			'message'       => $message,
+		);
+	}
+	private function generate_simple( array $image, ?string $site_name, ?string $description ): array {
+		$elements    = $this->profile->get_site_elements();
+		$site_name   = null !== $site_name ? $site_name : (string) ( $elements['site_name'] ?? '' );
+		$description = null !== $description ? $description : (string) ( $elements['description'] ?? '' );
+		if ( '' === trim( $site_name ) ) {
+			$site_name = (string) get_bloginfo( 'name' );
+		}
+		$style = Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) );
+		$seed  = '' !== trim( $site_name ) ? $site_name : $description;
+		$processed = Simple_Image::eyecatch( $style, $seed );
+		$title = '' !== trim( $site_name )
+			? sprintf(
+				__( '%s のトップページ用アイキャッチ', GACHIREAI_TEXT_DOMAIN ),
+				$site_name
+			)
+			: __( 'トップページ用アイキャッチ', GACHIREAI_TEXT_DOMAIN );
+		$warnings = array();
+		$data     = $processed;
+		$base_id  = 0;
+		if ( '1' === $image['text_overlay'] && '' !== trim( $site_name ) ) {
+			try {
+				$base_id = Media::store(
+					$processed,
+					'gachireai-top-eyecatch-base-' . gmdate( 'Ymd-His' ) . '-' . wp_generate_password( 6, false, false ) . '.jpg',
+					$title . '（背景）',
+					'',
+					array( '_gachireai_image_kind' => 'top_eyecatch_base' )
+				);
+			} catch ( \Throwable $e ) {
+				$base_id = 0;
+			}
+			$font_path = Font_Manager::resolve(
+				(string) ( $image['font'] ?? Font_Catalog::DEFAULT_FONT ),
+				(string) ( $image['font_weight'] ?? Font_Catalog::DEFAULT_WEIGHT )
+			);
+			$overlay = Text_Overlay::apply(
+				$processed['data'],
+				array(
+					'site_name'    => '',
+					'title'        => $site_name,
+					'product_name' => self::subtitle( $description ),
+				),
+				(string) $image['text_side'],
+				$font_path
+			);
+			if ( '' !== (string) $overlay['warning'] ) {
+				$warnings[] = (string) $overlay['warning'];
+			}
+			$data = array(
+				'data'   => $overlay['data'],
+				'mime'   => $overlay['mime'],
+				'width'  => self::WIDTH,
+				'height' => self::HEIGHT,
+			);
+		}
+		$filename = 'gachireai-top-eyecatch-' . gmdate( 'Ymd-His' ) . '-' . wp_generate_password( 6, false, false ) . '.jpg';
+		$attachment_id = Media::store(
+			$data,
+			$filename,
+			$title,
+			$title,
+			array(
+				'_gachireai_image_kind'               => 'top_eyecatch',
+				'_gachireai_image_provider'           => 'simple',
+				'_gachireai_image_model'              => 'gd',
+				'_gachireai_image_generated_at'       => time(),
+				'_gachireai_image_base_attachment_id' => $base_id,
+				'_gachireai_image_text_warning'       => implode( ' / ', $warnings ),
+			)
+		);
+		Event_Logger::record(
+			Event_Logger::TYPE_SYSTEM,
+			Event_Logger::LEVEL_INFO,
+			__( 'シンプルなトップページ用アイキャッチを生成しました。', GACHIREAI_TEXT_DOMAIN ),
+			array(
+				'provider' => 'simple',
+				'size'     => self::WIDTH . 'x' . self::HEIGHT,
+			)
+		);
+		$message = __( 'シンプルなトップページ用アイキャッチを生成しました。［保存］でトップページに反映されます。', GACHIREAI_TEXT_DOMAIN );
 		if ( array() !== $warnings ) {
 			$message .= ' ' . implode( ' / ', $warnings );
 		}

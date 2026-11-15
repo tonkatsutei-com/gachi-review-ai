@@ -13,8 +13,8 @@ use Tonkatsutei\Gachi_Review_AI\Image\Font_Preview;
 use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Image\Manager as Image_Manager;
 use Tonkatsutei\Gachi_Review_AI\Image\Profile;
+use Tonkatsutei\Gachi_Review_AI\Image\Simple_Image;
 use Tonkatsutei\Gachi_Review_AI\Image\Top_Eyecatch;
-use Tonkatsutei\Gachi_Review_AI\License\Capabilities;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Llm\Keyword_Proposer;
 use Tonkatsutei\Gachi_Review_AI\Llm\Style_Proposer;
@@ -976,6 +976,26 @@ final class Site_Setup extends Screen {
 		$settings = new Settings();
 		return Image_Manager::is_available( $settings->image(), $settings );
 	}
+	private function image_generate_state(): array {
+		$settings     = new Settings();
+		$image        = $settings->image();
+		$effective    = Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) );
+		$simple       = Image_Catalog::is_simple_style( $effective );
+		$available = $simple
+			? Simple_Image::is_available()
+			: ( $this->image_available() && Status::capabilities()->can_generate_image() );
+		return array(
+			'simple'    => $simple,
+			'available' => $available,
+			'label'     => $simple ? __( '生成', GACHIREAI_TEXT_DOMAIN ) : __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
+			'title_ok'  => $simple
+				? __( 'シンプルな画像を生成します（［保存］で反映）', GACHIREAI_TEXT_DOMAIN )
+				: __( 'AIで画像を生成します（［保存］で反映）', GACHIREAI_TEXT_DOMAIN ),
+			'title_bad' => $simple
+				? __( 'このサーバーでは GD が有効でないため生成できません。', GACHIREAI_TEXT_DOMAIN )
+				: __( '画像生成AIの設定を保存すると使えます。', GACHIREAI_TEXT_DOMAIN ),
+		);
+	}
 	private function posted_array( string $key ): ?array {
 		if ( ! isset( $_POST[ $key ] ) || ! is_array( $_POST[ $key ] ) ) {
 			return null;
@@ -1840,7 +1860,6 @@ final class Site_Setup extends Screen {
 		$favicon_override = isset( $site_image_overrides['favicon'] )
 			? absint( (string) $site_image_overrides['favicon'] )
 			: 0;
-		$site_images_disabled = Capabilities::IMAGE_NONE === Status::capabilities()->image_background_mode();
 		return array(
 			'site_images_form_action'   => esc_url( Tabs::url( Tabs::TAB_SITE ) ),
 			'site_images_hidden_fields' => array(
@@ -1855,7 +1874,7 @@ final class Site_Setup extends Screen {
 			),
 			'site_images_title'         => esc_html__( 'サイト画像', GACHIREAI_TEXT_DOMAIN ),
 			'site_images_anchor'        => esc_attr( 'site_images' ),
-			'site_images_intro'         => esc_html__( 'AIで生成する画像の設定です。', GACHIREAI_TEXT_DOMAIN ),
+			'site_images_intro'         => esc_html__( 'サイト画像（画風・ファビコン・プロフィール画像・トップページ用アイキャッチ）の設定です。', GACHIREAI_TEXT_DOMAIN ),
 			'site_images_items'         => array(
 				...$this->site_image_style_models( $site_image_overrides ),
 				$this->element_favicon_model( $favicon_override ),
@@ -1865,10 +1884,8 @@ final class Site_Setup extends Screen {
 			),
 			'site_images_submit_label'  => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
 			'site_images_submit_action' => esc_attr( self::AJAX_ACTION_SAVE_SITE_IMAGES ),
-			'site_images_disabled'      => $site_images_disabled,
-			'site_images_note'          => $site_images_disabled
-				? esc_html__( 'サイト画像は PRO, BASIC ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN )
-				: '',
+			'site_images_disabled'      => false,
+			'site_images_note'          => '',
 			'site_images_messages'      => array(),
 		);
 	}
@@ -1884,7 +1901,7 @@ final class Site_Setup extends Screen {
 		$image    = $settings->image();
 		$family = isset( $overrides['style_family'] ) && is_scalar( $overrides['style_family'] )
 			? (string) $overrides['style_family']
-			: Image_Catalog::family_of( (string) ( $image['style'] ?? '' ) );
+			: Image_Catalog::family_of( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) );
 		$text   = isset( $overrides['style_text'] ) && is_scalar( $overrides['style_text'] )
 			? (string) $overrides['style_text']
 			: (string) ( $image['style_text'] ?? '' );
@@ -2038,9 +2055,9 @@ final class Site_Setup extends Screen {
 		);
 	}
 	private function element_favicon_model( int $override = 0 ): array {
-		$id        = 0 < $override ? $override : (int) get_option( 'site_icon', 0 );
-		$url       = 0 < $id ? (string) wp_get_attachment_image_url( $id, 'medium' ) : '';
-		$available = $this->image_available();
+		$id    = 0 < $override ? $override : (int) get_option( 'site_icon', 0 );
+		$url   = 0 < $id ? (string) wp_get_attachment_image_url( $id, 'medium' ) : '';
+		$state = $this->image_generate_state();
 		return array(
 			'el_is_field'              => false,
 			'el_is_favicon'            => true,
@@ -2049,14 +2066,12 @@ final class Site_Setup extends Screen {
 			'favicon_id'               => esc_attr( (string) $id ),
 			'favicon_url'              => esc_url( $url ),
 			'favicon_has_image'        => '' !== $url,
-			'favicon_disabled'         => ! $available,
-			'favicon_button_label'     => esc_html__( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
-			'button_icon'              => 'robot',
+			'favicon_disabled'         => ! $state['available'],
+			'favicon_button_label'     => esc_html( $state['label'] ),
+			'button_icon'              => $state['simple'] ? '' : 'robot',
 			'favicon_button_action'    => esc_attr( self::AJAX_ACTION_GENERATE_FAVICON ),
 			'favicon_button_name'      => esc_attr( self::GENERATE_FAVICON_FIELD ),
-			'favicon_button_title'     => $available
-				? esc_attr__( '文字なしのフラットアイコンを生成します（［保存］でサイトアイコンに反映）', GACHIREAI_TEXT_DOMAIN )
-				: esc_attr__( '画像生成AIの設定を保存すると使えます。', GACHIREAI_TEXT_DOMAIN ),
+			'favicon_button_title'     => esc_attr( $state['available'] ? $state['title_ok'] : $state['title_bad'] ),
 			'favicon_messages'         => array(),
 		);
 	}
@@ -2376,19 +2391,30 @@ final class Site_Setup extends Screen {
 		);
 	}
 	private function site_image_style_family_definition(): array {
-		$is_pro  = Status::capabilities()->is_pro();
+		$capabilities = Status::capabilities();
+		$is_pro       = $capabilities->is_pro();
 		$options = Image_Catalog::families();
 		$options[ Image_Catalog::STYLE_CUSTOM ] = __( '自由設定（自由記述）', GACHIREAI_TEXT_DOMAIN );
 		$description = __( 'サイト全体でトーン＆マナーを統一します。系統を選ぶと、その系統内の画風が自動で決まります。', GACHIREAI_TEXT_DOMAIN );
 		if ( ! $is_pro ) {
 			$description .= ' ' . __( '「自由設定」は PRO ライセンスでご利用いただけます。', GACHIREAI_TEXT_DOMAIN );
 		}
+		$disabled = array();
+		foreach ( array_keys( Image_Catalog::families() ) as $slug ) {
+			if ( ! $capabilities->can_use_image_family( (string) $slug ) ) {
+				$disabled[] = (string) $slug;
+			}
+		}
+		if ( ! $is_pro ) {
+			$disabled[] = Image_Catalog::STYLE_CUSTOM;
+		}
+		$default = $capabilities->is_free() ? Image_Catalog::FAMILY_SIMPLE : Image_Catalog::FAMILY_PHOTOREAL;
 		return array(
 			'label'       => __( 'サイト全体の画風', GACHIREAI_TEXT_DOMAIN ),
 			'type'        => 'radio',
 			'options'     => $options,
-			'default'     => Image_Catalog::FAMILY_PHOTOREAL,
-			'disabled'    => $is_pro ? array() : array( Image_Catalog::STYLE_CUSTOM ),
+			'default'     => $default,
+			'disabled'    => $disabled,
 			'driver'      => 'style_family',
 			'description' => $description,
 		);
@@ -2446,37 +2472,35 @@ final class Site_Setup extends Screen {
 		);
 	}
 	private function profile_image_definition(): array {
-		$image_available = $this->image_available();
+		$state = $this->image_generate_state();
 		return array(
 			'label'             => __( 'プロフィール画像', GACHIREAI_TEXT_DOMAIN ),
 			'type'              => 'image',
 			'description'       => __( '自己紹介（トップページ, ウィジェットなど）に使う画像です。', GACHIREAI_TEXT_DOMAIN ),
 			'pick_label'        => __( '画像を選択', GACHIREAI_TEXT_DOMAIN ),
 			'clear_label'       => __( '削除', GACHIREAI_TEXT_DOMAIN ),
-			'generate_label'    => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
+			'generate_label'    => $state['label'],
 			'generate_name'     => self::GENERATE_PROFILE_PHOTO_FIELD,
 			'generate_action'   => self::AJAX_ACTION_GENERATE_PROFILE_PHOTO,
-			'generate_disabled' => ! $image_available,
-			'generate_title'    => $image_available
-				? __( 'マイペルソナの人物像からプロフィール画像を生成します', GACHIREAI_TEXT_DOMAIN )
-				: __( '画像生成AIの設定を保存すると使えます。', GACHIREAI_TEXT_DOMAIN ),
+			'generate_disabled' => ! $state['available'],
+			'generate_title'    => $state['available'] ? $state['title_ok'] : $state['title_bad'],
+			'button_icon'       => $state['simple'] ? '' : 'robot',
 		);
 	}
 	private function top_eyecatch_definition(): array {
-		$image_available = $this->image_available();
+		$state = $this->image_generate_state();
 		return array(
 			'label'             => __( 'トップページ用アイキャッチ', GACHIREAI_TEXT_DOMAIN ),
 			'type'              => 'image',
 			'description'       => __( "トップページの先頭に表示し、アイキャッチ画像として登録します。\nOGPの有効化が ON のときは SNS 共有時の og:image にも使われます。", GACHIREAI_TEXT_DOMAIN ),
 			'pick_label'        => __( '画像を選択', GACHIREAI_TEXT_DOMAIN ),
 			'clear_label'       => __( '削除', GACHIREAI_TEXT_DOMAIN ),
-			'generate_label'    => __( 'AI生成', GACHIREAI_TEXT_DOMAIN ),
+			'generate_label'    => $state['label'],
 			'generate_name'     => self::GENERATE_TOP_EYECATCH_FIELD,
 			'generate_action'   => self::AJAX_ACTION_GENERATE_TOP_EYECATCH,
-			'generate_disabled' => ! $image_available,
-			'generate_title'    => $image_available
-				? __( 'サイトの世界観からトップページ用アイキャッチを生成します', GACHIREAI_TEXT_DOMAIN )
-				: __( '画像生成AIの設定を保存すると使えます。', GACHIREAI_TEXT_DOMAIN ),
+			'generate_disabled' => ! $state['available'],
+			'generate_title'    => $state['available'] ? $state['title_ok'] : $state['title_bad'],
+			'button_icon'       => $state['simple'] ? '' : 'robot',
 		);
 	}
 	private function definitions(): array {

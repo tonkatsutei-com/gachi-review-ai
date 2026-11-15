@@ -4,6 +4,7 @@ namespace Tonkatsutei\Gachi_Review_AI\License;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Box_Renderer;
 use Tonkatsutei\Gachi_Review_AI\Article\Source_Settings;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
+use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 if (! defined('ABSPATH')) {
 	exit;
 }
@@ -11,8 +12,6 @@ final class Capabilities
 {
 	private const ARTICLE_TYPES = array('summary', 'quote', 'experience');
 	private const PRO_ARTICLE_TYPES = array('dialogue');
-	public const IMAGE_NONE = 'none';
-	public const IMAGE_GENERATE = 'generate';
 	private string $tier;
 	public function __construct(string $tier)
 	{
@@ -99,9 +98,34 @@ final class Capabilities
 	{
 		return $this->is_basic_or_higher();
 	}
-	public function image_background_mode(): string
+	public function allowed_image_families(): array
 	{
-		return $this->is_free() ? self::IMAGE_NONE : self::IMAGE_GENERATE;
+		if ($this->is_free()) {
+			return array(Image_Catalog::FAMILY_SIMPLE);
+		}
+		return array(
+			Image_Catalog::FAMILY_SIMPLE,
+			Image_Catalog::FAMILY_PHOTOREAL,
+			Image_Catalog::FAMILY_ILLUSTRATION,
+			Image_Catalog::FAMILY_3DCG,
+			Image_Catalog::FAMILY_ANIME,
+			Image_Catalog::FAMILY_PAINT,
+		);
+	}
+	public function can_use_image_family(string $family): bool
+	{
+		return in_array($family, $this->allowed_image_families(), true);
+	}
+	public function effective_image_style(string $style): string
+	{
+		if (Image_Catalog::STYLE_CUSTOM === $style) {
+			return $this->is_pro() ? Image_Catalog::STYLE_CUSTOM : Image_Catalog::STYLE_SIMPLE_SOLID;
+		}
+		$family = Image_Catalog::family_of($style);
+		if ($this->can_use_image_family($family)) {
+			return $style;
+		}
+		return Image_Catalog::STYLE_SIMPLE_SOLID;
 	}
 	public function can_use_multisite(): bool
 	{

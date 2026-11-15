@@ -10,7 +10,6 @@ use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Image\Image_Catalog;
 use Tonkatsutei\Gachi_Review_AI\Image\Manager as Image_Manager;
-use Tonkatsutei\Gachi_Review_AI\License\Capabilities;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Llm\Jev_Client;
 use Tonkatsutei\Gachi_Review_AI\Llm\Manager;
@@ -873,7 +872,7 @@ final class Api_Affiliate extends Screen
 	private function save_button(string $key): array
 	{
 		$btn_disabled = (self::KEY_JEV === $key && ! Status::capabilities()->can_judge_with_jev())
-			|| (self::KEY_IMAGE === $key && Capabilities::IMAGE_NONE === Status::capabilities()->image_background_mode());
+			|| (self::KEY_IMAGE === $key && ! Status::capabilities()->can_generate_image());
 		return array(
 			'btn_name'     => '',
 			'btn_value'    => '',
@@ -890,8 +889,8 @@ final class Api_Affiliate extends Screen
 		if (self::KEY_JEV === $key && ! Status::capabilities()->can_judge_with_jev()) {
 			return esc_html__('レビュー判定は PRO, BASIC ライセンスのみ利用できます。', GACHIREAI_TEXT_DOMAIN);
 		}
-		if (self::KEY_IMAGE === $key && Capabilities::IMAGE_NONE === Status::capabilities()->image_background_mode()) {
-			return esc_html__('画像生成は PRO, BASIC ライセンスのみです。', GACHIREAI_TEXT_DOMAIN);
+		if (self::KEY_IMAGE === $key && ! Status::capabilities()->can_generate_image()) {
+			return esc_html__('画像生成AIは PRO, BASIC ライセンスのみです（FREE は「シンプル（非AI）」の画像生成が使えます）。', GACHIREAI_TEXT_DOMAIN);
 		}
 		return '';
 	}
@@ -1102,7 +1101,7 @@ final class Api_Affiliate extends Screen
 		foreach (array_keys(Image_Catalog::providers()) as $provider) {
 			$defaults[] = Image_Catalog::default_model((string) $provider);
 		}
-		$disabled = Capabilities::IMAGE_NONE === Status::capabilities()->image_background_mode();
+		$disabled = ! Status::capabilities()->can_generate_image();
 		return array(
 			'provider'   => array(
 				'label'       => __('使用するAI', GACHIREAI_TEXT_DOMAIN),

@@ -10,12 +10,18 @@ final class Image_Catalog {
 	public const STYLE_3D        = 'minimal3d';
 	public const STYLE_FLAT      = 'flat';
 	public const STYLE_CUSTOM    = 'custom';
+	public const STYLE_SIMPLE_SOLID = 'simple-solid';
 	public const FAMILY_PHOTOREAL    = 'photoreal';
 	public const FAMILY_ILLUSTRATION = 'illustration';
 	public const FAMILY_3DCG         = '3dcg';
 	public const FAMILY_ANIME        = 'anime';
 	public const FAMILY_PAINT        = 'paint';
+	public const FAMILY_SIMPLE       = 'simple';
 	private const FAMILIES = array(
+		self::FAMILY_SIMPLE       => array(
+			'label'  => 'シンプル（非AI）',
+			'styles' => array( 'simple-solid', 'simple-gradient', 'simple-stripes', 'simple-geometric' ),
+		),
 		self::FAMILY_PHOTOREAL    => array(
 			'label'  => '実写・フォトリアル',
 			'styles' => array( self::STYLE_CINEMATIC, self::STYLE_EDITORIAL, 'lifestyle', 'cozy', 'minimal', 'luxury', 'vintage-film', 'bright', 'moody', 'candid' ),
@@ -65,6 +71,26 @@ final class Image_Catalog {
 		),
 	);
 	private const STYLES = array(
+		'simple-solid'     => array(
+			'label'  => 'シンプル（無地）',
+			'prompt' => '',
+			'family' => self::FAMILY_SIMPLE,
+		),
+		'simple-gradient'  => array(
+			'label'  => 'シンプル（グラデーション）',
+			'prompt' => '',
+			'family' => self::FAMILY_SIMPLE,
+		),
+		'simple-stripes'   => array(
+			'label'  => 'シンプル（ストライプ）',
+			'prompt' => '',
+			'family' => self::FAMILY_SIMPLE,
+		),
+		'simple-geometric' => array(
+			'label'  => 'シンプル（幾何学模様）',
+			'prompt' => '',
+			'family' => self::FAMILY_SIMPLE,
+		),
 		self::STYLE_CINEMATIC => array(
 			'label'  => '実写風（シネマティック）',
 			'prompt' => 'Cinematic editorial lifestyle photography, natural window light, shallow depth of field, realistic textures, warm and calm mood, candid magazine composition.',
@@ -417,6 +443,9 @@ final class Image_Catalog {
 		}
 		$style = self::normalize_style( $style );
 		return (string) ( self::STYLES[ $style ]['family'] ?? self::FAMILY_PHOTOREAL );
+	}
+	public static function is_simple_style( string $style ): bool {
+		return self::FAMILY_SIMPLE === self::family_of( $style );
 	}
 	public static function random_style( string $family ): string {
 		$styles = array_keys( self::styles_in_family( $family ) );

@@ -179,7 +179,7 @@ final class Form {
 			$field['image_generate_action']   = esc_attr( (string) ( $definition['generate_action'] ?? '' ) );
 			$field['image_generate_disabled'] = ! empty( $definition['generate_disabled'] );
 			$field['image_generate_title']    = esc_attr( (string) ( $definition['generate_title'] ?? '' ) );
-			$field['button_icon']            = 'robot';
+			$field['button_icon']            = (string) ( $definition['button_icon'] ?? 'robot' );
 			return $field;
 		}
 		if ( $is_cron ) {

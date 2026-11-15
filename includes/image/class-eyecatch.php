@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Image;
-use Tonkatsutei\Gachi_Review_AI\License\Capabilities;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
@@ -21,22 +20,16 @@ final class Eyecatch {
 		if ( '1' !== $image['eyecatch'] ) {
 			return $this->result( 'disabled', '' );
 		}
-		$license_mode = Status::capabilities()->image_background_mode();
-		if ( Capabilities::IMAGE_NONE === $license_mode ) {
-			return $this->result(
-				'skipped',
-				__( '現在のライセンス（FREE）ではアイキャッチ画像を利用できません。', GACHIREAI_TEXT_DOMAIN )
-			);
-		}
+		$is_simple = Image_Catalog::is_simple_style( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) );
 		$mode = (string) $image['eyecatch_mode'];
-		if ( 'generate' === $mode && Capabilities::IMAGE_GENERATE !== $license_mode ) {
-			$mode = 'top';
-		}
 		if ( 'top' === $mode ) {
 			return $this->apply_fixed_top( $post_id, $profile, $force );
 		}
 		if ( 'select' === $mode ) {
 			return $this->apply_selected_image( $post_id, (int) $image['eyecatch_image'], $force );
+		}
+		if ( $is_simple ) {
+			return $this->generate_simple_for_post( $post_id, $title, $product, $profile, $force );
 		}
 		$api_key = $this->settings->image_api_key( $image );
 		if ( '' === $api_key ) {
@@ -130,6 +123,90 @@ final class Eyecatch {
 		return array(
 			'status'        => 'generated',
 			'message'       => __( 'アイキャッチ画像を生成し、記事に設定しました。', GACHIREAI_TEXT_DOMAIN ),
+			'attachment_id' => $attachment_id,
+			'url'           => (string) wp_get_attachment_image_url( $attachment_id, 'full' ),
+			'warnings'      => $warnings,
+		);
+	}
+	private function generate_simple_for_post( int $post_id, string $title, array $product, Site_Profile $profile, bool $force ): array {
+		if ( ! $force && function_exists( 'has_post_thumbnail' ) && has_post_thumbnail( $post_id ) ) {
+			return $this->result( 'skipped', __( 'アイキャッチ画像が既に設定されているため、生成しませんでした。', GACHIREAI_TEXT_DOMAIN ) );
+		}
+		$image = $this->settings->image();
+		$style = Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) );
+		$seed  = '' !== trim( $title ) ? $title : (string) get_the_title( $post_id );
+		$generated = Simple_Image::eyecatch( $style, $seed );
+		$processed = array(
+			'data'   => $generated['data'],
+			'mime'   => $generated['mime'],
+			'width'  => self::WIDTH,
+			'height' => self::HEIGHT,
+		);
+		$warnings = array();
+		$data     = $processed;
+		if ( '1' === $image['text_overlay'] ) {
+			$font_path = Font_Manager::resolve(
+				(string) ( $image['font'] ?? Font_Catalog::DEFAULT_FONT ),
+				(string) ( $image['font_weight'] ?? Font_Catalog::DEFAULT_WEIGHT )
+			);
+			$overlay = Text_Overlay::apply(
+				$processed['data'],
+				array(
+					'site_name'    => (string) ( $profile->get_site_elements()['site_name'] ?? '' ),
+					'title'        => $title,
+					'product_name' => (string) ( $product['product_name'] ?? '' ),
+				),
+				(string) $image['text_side'],
+				$font_path
+			);
+			if ( '' !== $overlay['warning'] ) {
+				$warnings[] = (string) $overlay['warning'];
+			}
+			$data = array(
+				'data'   => $overlay['data'],
+				'mime'   => $overlay['mime'],
+				'width'  => self::WIDTH,
+				'height' => self::HEIGHT,
+			);
+		}
+		$filename = 'gachireai-eyecatch-' . $post_id . '-' . gmdate( 'Ymd-His' ) . '-' . wp_generate_password( 6, false, false ) . '.jpg';
+		$alt      = sprintf(
+			__( '記事「%s」のアイキャッチ画像', GACHIREAI_TEXT_DOMAIN ),
+			mb_substr( wp_strip_all_tags( $title ), 0, 60 )
+		);
+		$attachment_id = Media::store(
+			$data,
+			$filename,
+			wp_strip_all_tags( $title ),
+			$alt,
+			array(
+				'_gachireai_image_kind'         => 'eyecatch',
+				'_gachireai_image_provider'     => 'simple',
+				'_gachireai_image_model'        => 'gd',
+				'_gachireai_image_generated_at' => time(),
+			),
+			$post_id
+		);
+		if ( ! set_post_thumbnail( $post_id, $attachment_id ) ) {
+			throw new \RuntimeException( __( '画像は保存できましたが、アイキャッチに設定できませんでした（テーマがアイキャッチに対応しているか確認してください）。', GACHIREAI_TEXT_DOMAIN ) );
+		}
+		if ( (int) get_post_thumbnail_id( $post_id ) !== $attachment_id ) {
+			throw new \RuntimeException(
+				sprintf(
+					__( '画像は保存できましたが、アイキャッチに設定されませんでした（添付 ID: %d）。メディアの画像を確認してください。', GACHIREAI_TEXT_DOMAIN ),
+					$attachment_id
+				)
+			);
+		}
+		update_post_meta( $post_id, 'gachireai_eyecatch_attachment_id', $attachment_id );
+		update_post_meta( $post_id, 'gachireai_eyecatch_prompt', '' );
+		update_post_meta( $post_id, 'gachireai_eyecatch_provider', 'simple' );
+		update_post_meta( $post_id, 'gachireai_eyecatch_model', 'gd' );
+		update_post_meta( $post_id, 'gachireai_eyecatch_generated_at', time() );
+		update_post_meta( $post_id, 'gachireai_eyecatch_text_warning', implode( ' / ', $warnings ) );
+		return array(
+			'status'        => 'generated',
+			'message'       => __( 'シンプルなアイキャッチ画像を生成し、記事に設定しました。', GACHIREAI_TEXT_DOMAIN ),
 			'attachment_id' => $attachment_id,
 			'url'           => (string) wp_get_attachment_image_url( $attachment_id, 'full' ),
 			'warnings'      => $warnings,

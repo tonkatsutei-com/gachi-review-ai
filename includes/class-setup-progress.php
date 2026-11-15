@@ -28,8 +28,8 @@ final class Setup_Progress {
 	}
 	public function tabs(): array {
 		return array(
-			$this->tab( Tabs::TAB_LLM, $this->ai_sections() ),
 			$this->tab( Tabs::TAB_ASP, $this->asp_sections() ),
+			$this->tab( Tabs::TAB_LLM, $this->ai_sections() ),
 			$this->tab( Tabs::TAB_SCRAPING, $this->scraping_sections() ),
 			$this->tab( Tabs::TAB_SITE, $this->site_sections() ),
 			$this->tab( Tabs::TAB_ARTICLE, $this->article_sections() ),

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace Tonkatsutei\Gachi_Review_AI\Image;
 use Tonkatsutei\Gachi_Review_AI\Event_Logger;
+use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
 final class Favicon {
@@ -13,10 +14,17 @@ final class Favicon {
 		$this->profile  = $profile ?? new Site_Profile();
 	}
 	public function is_available(): bool {
-		return Manager::is_available( $this->settings->image(), $this->settings );
+		$image = $this->settings->image();
+		if ( Image_Catalog::is_simple_style( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) ) ) {
+			return Simple_Image::is_available();
+		}
+		return Manager::is_available( $image, $this->settings );
 	}
 	public function generate(): array {
 		$image   = $this->settings->image();
+		if ( Image_Catalog::is_simple_style( Status::capabilities()->effective_image_style( (string) ( $image['style'] ?? '' ) ) ) ) {
+			return $this->generate_simple( $image );
+		}
 		$api_key = $this->settings->image_api_key( $image );
 		if ( '' === $api_key ) {
 			throw new \RuntimeException( __( '画像生成AIの API キーが未設定です。「AI設定」タブで保存してください。', GACHIREAI_TEXT_DOMAIN ) );
@@ -75,6 +83,44 @@ final class Favicon {
 			'attachment_id' => $attachment_id,
 			'url'           => (string) wp_get_attachment_image_url( $attachment_id, 'full' ),
 			'message'       => __( 'ファビコンを生成しました。［保存］でサイトアイコンに反映されます。', GACHIREAI_TEXT_DOMAIN ),
+		);
+	}
+	private function generate_simple( array $image ): array {
+		$site_name = (string) ( $this->profile->get_site_elements()['site_name'] ?? '' );
+		$seed      = '' !== trim( $site_name ) ? $site_name : (string) get_bloginfo( 'name' );
+		$generated = Simple_Image::favicon( $seed );
+		$title = '' !== trim( $site_name )
+			? sprintf(
+				__( '%s のファビコン', GACHIREAI_TEXT_DOMAIN ),
+				$site_name
+			)
+			: __( 'サイトのファビコン', GACHIREAI_TEXT_DOMAIN );
+		$filename = 'gachireai-favicon-' . gmdate( 'Ymd-His' ) . '-' . wp_generate_password( 6, false, false ) . '.png';
+		$attachment_id = Media::store(
+			$generated,
+			$filename,
+			$title,
+			__( 'サイトのアイコン', GACHIREAI_TEXT_DOMAIN ),
+			array(
+				'_gachireai_image_kind'         => 'favicon',
+				'_gachireai_image_provider'     => 'simple',
+				'_gachireai_image_model'        => 'gd',
+				'_gachireai_image_generated_at' => time(),
+			)
+		);
+		Event_Logger::record(
+			Event_Logger::TYPE_SYSTEM,
+			Event_Logger::LEVEL_INFO,
+			__( 'シンプルなファビコンを生成しました。', GACHIREAI_TEXT_DOMAIN ),
+			array(
+				'provider' => 'simple',
+				'size'     => 512,
+			)
+		);
+		return array(
+			'attachment_id' => $attachment_id,
+			'url'           => (string) wp_get_attachment_image_url( $attachment_id, 'full' ),
+			'message'       => __( 'シンプルなファビコンを生成しました。［保存］でサイトアイコンに反映されます。', GACHIREAI_TEXT_DOMAIN ),
 		);
 	}
 }

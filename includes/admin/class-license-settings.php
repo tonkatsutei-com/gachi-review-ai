@@ -57,6 +57,12 @@ final class License_Settings
 				array(__('利用可', GACHIREAI_TEXT_DOMAIN), 'full'),
 			),
 			array(
+				__('画風', GACHIREAI_TEXT_DOMAIN),
+				array(__('シンプル（非AI）のみ', GACHIREAI_TEXT_DOMAIN), 'partial'),
+				array(__('6種類', GACHIREAI_TEXT_DOMAIN), 'partial'),
+				array(__('6種類+自由記述', GACHIREAI_TEXT_DOMAIN), 'full'),
+			),
+			array(
 				__('マルチサイト', GACHIREAI_TEXT_DOMAIN),
 				array(__('非対応', GACHIREAI_TEXT_DOMAIN), 'none'),
 				array(__('非対応', GACHIREAI_TEXT_DOMAIN), 'none'),

@@ -12,7 +12,6 @@ use Tonkatsutei\Gachi_Review_AI\Article\Cron_Schedule;
 use Tonkatsutei\Gachi_Review_AI\Article\Dialogue_Character;
 use Tonkatsutei\Gachi_Review_AI\Article\Reuse_Interval;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
-use Tonkatsutei\Gachi_Review_AI\License\Capabilities;
 use Tonkatsutei\Gachi_Review_AI\License\Status;
 use Tonkatsutei\Gachi_Review_AI\Settings;
 use Tonkatsutei\Gachi_Review_AI\SiteProfile\Site_Profile;
@@ -259,16 +258,6 @@ final class Article_Settings extends Screen {
 	private function eyecatch_form_fields( array $messages = array(), ?array $values = null ): array {
 		$definitions = $this->eyecatch_definitions();
 		$values      = null === $values ? $this->eyecatch_values() : $values;
-		$section_disabled = Capabilities::IMAGE_NONE === Status::capabilities()->image_background_mode();
-		if ( $section_disabled ) {
-			$values['eyecatch'] = '';
-		}
-		if (
-			Capabilities::IMAGE_GENERATE !== Status::capabilities()->image_background_mode()
-			&& 'generate' === (string) ( $values['eyecatch_mode'] ?? '' )
-		) {
-			$values['eyecatch_mode'] = 'top';
-		}
 		$fields      = $this->eyecatch_form()->build_list(
 			$values,
 			array_keys( $definitions ),
@@ -306,15 +295,13 @@ final class Article_Settings extends Screen {
 							'btn_value'    => '',
 							'btn_label'    => esc_html__( '保存', GACHIREAI_TEXT_DOMAIN ),
 							'btn_primary'  => true,
-							'btn_disabled' => $section_disabled,
+							'btn_disabled' => false,
 							'btn_title'    => '',
 							'btn_action'   => esc_attr( self::AJAX_ACTION_SAVE_EYECATCH ),
 							'btn_testing'  => false,
 						),
 					),
-					'section_note'     => $section_disabled
-						? esc_html__( 'アイキャッチは PRO, BASIC ライセンスで利用できます。', GACHIREAI_TEXT_DOMAIN )
-						: '',
+					'section_note'     => '',
 					'section_messages' => $messages,
 				),
 			),
@@ -325,13 +312,13 @@ final class Article_Settings extends Screen {
 		);
 	}
 	private function eyecatch_definitions(): array {
-		$image   = ( new Settings() )->image();
-		$master  = '1' === (string) ( $image['eyecatch'] ?? '' );
-		$license = Status::capabilities()->image_background_mode();
-		$section_disabled = Capabilities::IMAGE_NONE === $license;
-		$generate_disabled = Capabilities::IMAGE_GENERATE !== $license;
-		$base_disabled = $section_disabled || ! $master;
-		$gen_disabled = $base_disabled || $generate_disabled;
+		$image  = ( new Settings() )->image();
+		$master = '1' === (string) ( $image['eyecatch'] ?? '' );
+		$is_ai = Status::capabilities()->can_generate_image();
+		$section_disabled  = false;
+		$generate_disabled = false;
+		$base_disabled     = ! $master;
+		$gen_disabled      = $base_disabled;
 		return array(
 			'eyecatch'     => array(
 				'label'       => __( 'アイキャッチを自動生成', GACHIREAI_TEXT_DOMAIN ),
@@ -345,17 +332,17 @@ final class Article_Settings extends Screen {
 				'label'       => __( 'アイキャッチ画像', GACHIREAI_TEXT_DOMAIN ),
 				'type'        => 'radio',
 				'options'     => array(
-					'generate' => __( '記事に合わせてAI生成', GACHIREAI_TEXT_DOMAIN ),
+					'generate' => __( '記事に合わせて生成', GACHIREAI_TEXT_DOMAIN ),
 					'top'      => __( 'トップページ用の画像で揃える', GACHIREAI_TEXT_DOMAIN ),
 					'select'   => __( '選択した画像で揃える', GACHIREAI_TEXT_DOMAIN ),
 				),
 				'default'     => 'generate',
 				'driver'      => 'eyecatch_mode',
-				'disabled'    => $generate_disabled ? array( 'generate' ) : array(),
+				'disabled'    => array(),
 				'field_disabled' => $base_disabled,
 				'disabled_by' => 'eyecatch',
 				'field_locked' => $section_disabled,
-				'description' => __( "記事に合わせてAI生成＝記事ごとに画像を生成します。\nトップページ用の画像で揃える＝サイト設定の「トップページ用アイキャッチ」を全記事で使います。\n選択した画像で揃える＝下で選んだ画像を全記事で使います。", GACHIREAI_TEXT_DOMAIN ),
+				'description' => __( "記事に合わせて生成＝記事ごとに画像を生成します（画風がシンプルなら GD、AI の画風なら AI 生成）。\nトップページ用の画像で揃える＝サイト設定の「トップページ用アイキャッチ」を全記事で使います。\n選択した画像で揃える＝下で選んだ画像を全記事で使います。", GACHIREAI_TEXT_DOMAIN ),
 			),
 			'eyecatch_image' => array(
 				'label'       => __( '選択した画像', GACHIREAI_TEXT_DOMAIN ),
@@ -397,10 +384,10 @@ final class Article_Settings extends Screen {
 				'label'       => __( 'プロンプトの英語化', GACHIREAI_TEXT_DOMAIN ),
 				'type'        => 'checkbox',
 				'options'     => array( '1' => __( '既存の LLM で画像プロンプトを英語化する', GACHIREAI_TEXT_DOMAIN ) ),
-				'field_disabled' => $gen_disabled,
+				'field_disabled' => $gen_disabled || ! $is_ai,
 				'disabled_by' => 'eyecatch',
-				'field_locked' => $section_disabled || $generate_disabled,
-				'description' => __( 'AIに作画内容を正確に伝えるために指示内容を英語で作ります。', GACHIREAI_TEXT_DOMAIN ),
+				'field_locked' => ! $is_ai,
+				'description' => __( 'AIに作画内容を正確に伝えるために指示内容を英語で作ります（AI 生成のときだけ使います）。', GACHIREAI_TEXT_DOMAIN ),
 			),
 			'show_eyecatch' => array(
 				'label'       => __( 'アイキャッチの表示', GACHIREAI_TEXT_DOMAIN ),
