@@ -69,6 +69,11 @@ final class Product_Ledger {
 		$row = $wpdb->get_row( $wpdb->prepare( $sql, $params ), ARRAY_A );
 		return is_array( $row ) ? $this->row_of( $row ) : array();
 	}
+	public function clear_selected(): int {
+		global $wpdb;
+		$sql = 'DELETE FROM ' . Activator::table( 'products' ) . ' WHERE status = %s';
+		return (int) $wpdb->query( $wpdb->prepare( $sql, array( self::STATUS_SELECTED ) ) );
+	}
 	public function register( string $ec, array $product, string $keyword = '', string $genre_id = '' ): array {
 		$ec   = Product_Selector::normalize_ec( $ec );
 		$name = trim( (string) ( $product['product_name'] ?? '' ) );

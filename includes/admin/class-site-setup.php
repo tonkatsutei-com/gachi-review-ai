@@ -4,6 +4,7 @@ namespace Tonkatsutei\Gachi_Review_AI\Admin;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Amazon_Client;
 use Tonkatsutei\Gachi_Review_AI\Affiliate\Connection_Status;
 use Tonkatsutei\Gachi_Review_AI\Ec\Genre_Catalog;
+use Tonkatsutei\Gachi_Review_AI\Ec\Product_Ledger;
 use Tonkatsutei\Gachi_Review_AI\Ec\Product_Selector;
 use Tonkatsutei\Gachi_Review_AI\Image\Favicon;
 use Tonkatsutei\Gachi_Review_AI\Image\Font_Catalog;
@@ -1012,7 +1013,12 @@ final class Site_Setup extends Screen {
 			$profile->update_field( self::PROFILE_KEY, array_merge( $profile->get_my_persona(), $persona ) );
 		}
 		if ( null !== $scope ) {
-			$profile->update_field( self::SCOPE_KEY, array_merge( $profile->get_scope(), $scope ) );
+			$old_scope = $profile->get_scope();
+			$new_scope = array_merge( $old_scope, $scope );
+			$profile->update_field( self::SCOPE_KEY, $new_scope );
+			if ( self::scope_selection_changed( $old_scope, $new_scope ) ) {
+				( new Product_Ledger() )->clear_selected();
+			}
 		}
 		if ( null !== $target ) {
 			$profile->update_field( self::TARGET_KEY, $target );
@@ -1049,6 +1055,14 @@ final class Site_Setup extends Screen {
 				'message' => $result['message'],
 			),
 		);
+	}
+	private static function scope_selection_changed( array $old, array $new ): bool {
+		foreach ( array( 'site_type', 'category', 'products' ) as $key ) {
+			if ( (string) ( $old[ $key ] ?? '' ) !== (string) ( $new[ $key ] ?? '' ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 	public function generate_persona( array $persona, array $scope = array() ): array {
 		$generator = new Site_Generator();

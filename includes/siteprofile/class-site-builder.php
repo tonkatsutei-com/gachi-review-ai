@@ -165,7 +165,7 @@ final class Site_Builder {
 		$settings->set(
 			'ai_review',
 			array(
-				Ai_Review::KEY_MODE  => Ai_Review::MODE_ONLY,
+				Ai_Review::KEY_MODE  => Ai_Review::MODE_FILL,
 				Ai_Review::KEY_COUNT => Ai_Review::DEFAULT_COUNT,
 			)
 		);
