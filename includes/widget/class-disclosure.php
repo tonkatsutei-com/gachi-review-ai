@@ -8,10 +8,17 @@ final class Disclosure {
 	private const MODE_OPTION = 'gachireai_disclosure_mode';
 	public const MODE_SIDEBAR = 'sidebar';
 	public const MODE_CONTENT = 'content';
+	public const AREA_ID = 'gachireai_disclosure_content';
+	private const AREA_MIGRATED_OPTION = 'gachireai_disclosure_area_migrated';
 	private static bool $content_prepended = false;
 	public static function register(): void {
 		add_action( 'widgets_init', array( Disclosure_Widget::class, 'register' ) );
-		add_filter( 'the_content', array( self::class, 'prepend_to_content' ) );
+		add_action( 'widgets_init', array( self::class, 'register_area' ) );
+		if ( self::is_cocoon_theme() ) {
+			add_action( 'singular_entry_content_before', array( self::class, 'render_content_area_action' ) );
+		} else {
+			add_filter( 'the_content', array( self::class, 'prepend_to_content' ) );
+		}
 		add_action( 'wp_enqueue_scripts', array( self::class, 'enqueue_front' ) );
 		add_action( 'admin_init', array( self::class, 'maybe_auto_install' ) );
 	}
@@ -27,6 +34,15 @@ final class Disclosure {
 			(string) filemtime( $path )
 		);
 	}
+	private static function is_cocoon_theme(): bool {
+		if ( ! function_exists( 'wp_get_theme' ) ) {
+			return false;
+		}
+		$theme    = wp_get_theme();
+		$template = strtolower( (string) $theme->get( 'Template' ) );
+		$name     = strtolower( (string) $theme->get( 'Name' ) );
+		return str_contains( $template, 'cocoon' ) || str_contains( $name, 'cocoon' );
+	}
 	public static function prepend_to_content( $content ) {
 		if ( is_admin() || self::$content_prepended ) {
 			return $content;
@@ -34,14 +50,48 @@ final class Disclosure {
 		if ( self::MODE_CONTENT !== (string) get_option( self::MODE_OPTION, '' ) ) {
 			return $content;
 		}
-		if ( self::is_in_active_sidebar() ) {
-			return $content;
-		}
 		if ( ! is_string( $content ) || ! is_singular() || ! in_the_loop() || ! is_main_query() ) {
 			return $content;
 		}
 		self::$content_prepended = true;
-		return self::render( self::instance_title() ) . $content;
+		return self::render_content_area() . $content;
+	}
+	private static function render_content_area(): string {
+		if ( ! function_exists( 'is_active_sidebar' ) || ! function_exists( 'dynamic_sidebar' ) ) {
+			return '';
+		}
+		if ( ! is_active_sidebar( self::AREA_ID ) ) {
+			return '';
+		}
+		ob_start();
+		dynamic_sidebar( self::AREA_ID );
+		return (string) ob_get_clean();
+	}
+	public static function render_content_area_action(): void {
+		if ( self::$content_prepended ) {
+			return;
+		}
+		if ( self::MODE_CONTENT !== (string) get_option( self::MODE_OPTION, '' ) ) {
+			return;
+		}
+		self::$content_prepended = true;
+		echo self::render_content_area(); 
+	}
+	public static function register_area(): void {
+		if ( ! function_exists( 'register_sidebar' ) ) {
+			return;
+		}
+		register_sidebar(
+			array(
+				'name'          => __( '[ガ]表示位置', GACHIREAI_TEXT_DOMAIN ),
+				'id'            => self::AREA_ID,
+				'description'   => __( 'サイドバーが無いテーマで、開示を記事タイトルの下へ表示します。', GACHIREAI_TEXT_DOMAIN ),
+				'before_widget' => '',
+				'after_widget'  => '',
+				'before_title'  => '',
+				'after_title'   => '',
+			)
+		);
 	}
 	public static function render( string $title = '' ): string {
 		$settings = new Settings();
@@ -78,6 +128,7 @@ final class Disclosure {
 			return;
 		}
 		self::migrate_titles();
+		self::migrate_content_area();
 		if ( self::is_installed() ) {
 			return;
 		}
@@ -86,6 +137,7 @@ final class Disclosure {
 			update_option( self::MODE_OPTION, self::MODE_SIDEBAR );
 			return;
 		}
+		self::place_widget( self::AREA_ID, $index );
 		update_option( self::MODE_OPTION, self::MODE_CONTENT );
 	}
 	public static function sync_titles( string $heading ): void {
@@ -160,22 +212,14 @@ final class Disclosure {
 		}
 		return false;
 	}
-	private static function is_in_active_sidebar(): bool {
-		$sidebars = wp_get_sidebars_widgets();
-		if ( ! is_array( $sidebars ) ) {
-			return false;
+	private static function migrate_content_area(): void {
+		if ( get_option( self::AREA_MIGRATED_OPTION ) ) {
+			return;
 		}
-		foreach ( $sidebars as $id => $widgets ) {
-			if ( 'array_version' === $id || 'wp_inactive_widgets' === $id || ! is_array( $widgets ) ) {
-				continue;
-			}
-			foreach ( $widgets as $widget ) {
-				if ( is_string( $widget ) && str_starts_with( $widget, self::WIDGET_ID_BASE . '-' ) ) {
-					return true;
-				}
-			}
+		if ( self::MODE_CONTENT === (string) get_option( self::MODE_OPTION, '' ) ) {
+			self::place_widget( self::AREA_ID, self::ensure_instance() );
 		}
-		return false;
+		update_option( self::AREA_MIGRATED_OPTION, '1' );
 	}
 	private static function migrate_titles(): void {
 		if ( get_option( 'gachireai_disclosure_title_migrated' ) ) {
@@ -214,17 +258,18 @@ final class Disclosure {
 		update_option( $option, $instances );
 		return $index;
 	}
-	private static function instance_title(): string {
-		$instances = get_option( 'widget_' . self::WIDGET_ID_BASE, array() );
-		if ( ! is_array( $instances ) ) {
-			return '';
+	private static function place_widget( string $sidebar_id, int $index ): void {
+		$sidebars = wp_get_sidebars_widgets();
+		if ( ! is_array( $sidebars ) ) {
+			$sidebars = array();
 		}
-		foreach ( $instances as $key => $instance ) {
-			if ( is_numeric( $key ) && is_array( $instance ) ) {
-				return isset( $instance['title'] ) ? (string) $instance['title'] : '';
-			}
+		$widgets   = ( isset( $sidebars[ $sidebar_id ] ) && is_array( $sidebars[ $sidebar_id ] ) ) ? $sidebars[ $sidebar_id ] : array();
+		$widget_id = self::WIDGET_ID_BASE . '-' . $index;
+		if ( ! in_array( $widget_id, $widgets, true ) ) {
+			$widgets[] = $widget_id;
 		}
-		return '';
+		$sidebars[ $sidebar_id ] = $widgets;
+		wp_set_sidebars_widgets( $sidebars );
 	}
 	private static function place_in_sidebar( int $index ): bool {
 		global $wp_registered_sidebars;
@@ -233,25 +278,16 @@ final class Disclosure {
 		if ( null === $target ) {
 			return false;
 		}
-		$sidebars = wp_get_sidebars_widgets();
-		if ( ! is_array( $sidebars ) ) {
-			$sidebars = array();
-		}
-		$widgets   = ( isset( $sidebars[ $target ] ) && is_array( $sidebars[ $target ] ) ) ? $sidebars[ $target ] : array();
-		$widget_id = self::WIDGET_ID_BASE . '-' . $index;
-		if ( ! in_array( $widget_id, $widgets, true ) ) {
-			$widgets[] = $widget_id;
-		}
-		$sidebars[ $target ] = $widgets;
-		wp_set_sidebars_widgets( $sidebars );
+		self::place_widget( $target, $index );
 		return true;
 	}
 	private static function pick_sidebar( array $ids ): ?string {
-		$ids = array_values(
+		$area = self::AREA_ID;
+		$ids  = array_values(
 			array_filter(
 				$ids,
-				static function ( $id ): bool {
-					return is_string( $id ) && '' !== $id && 'wp_inactive_widgets' !== $id;
+				static function ( $id ) use ( $area ): bool {
+					return is_string( $id ) && '' !== $id && 'wp_inactive_widgets' !== $id && $area !== $id;
 				}
 			)
 		);

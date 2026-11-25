@@ -8,7 +8,7 @@ final class Sister_Sites_Widget extends \WP_Widget
 	{
 		parent::__construct(
 			Sister_Sites::WIDGET_ID_BASE,
-			__('姉妹サイト', GACHIREAI_TEXT_DOMAIN),
+			__('[ガ]姉妹サイト', GACHIREAI_TEXT_DOMAIN),
 			array(
 				'classname'   => 'gachireai-sister-sites-widget',
 				'description' => __('マルチサイトの姉妹サイトをカードで一覧表示します。', GACHIREAI_TEXT_DOMAIN),

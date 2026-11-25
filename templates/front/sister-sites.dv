@@ -2,7 +2,7 @@
 ?$sites
 <div class="gachireai-sister-sites">
 	?$has_title
-	<h2 class="gachireai-sister-sites__title">{$title}</h2>
+	<div class="gachireai-sister-sites__title" role="heading" aria-level="2">{$title}</div>
 	$has_title?
 	<ul class="gachireai-sister-sites__list">
 		[$sites]

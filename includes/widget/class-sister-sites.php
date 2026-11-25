@@ -9,13 +9,20 @@ final class Sister_Sites {
 	public const MODE_CONTENT = 'content';
 	private const IMAGE_SIZE = 'medium';
 	private const DESCRIPTION_MAX = 160;
+	public const AREA_ID = 'gachireai_sister_sites_content';
+	private const AREA_MIGRATED_OPTION = 'gachireai_sister_sites_area_migrated';
 	private static bool $content_appended = false;
 	public static function register(): void {
 		if ( ! is_multisite() ) {
 			return;
 		}
 		add_action( 'widgets_init', array( Sister_Sites_Widget::class, 'register' ) );
-		add_filter( 'the_content', array( self::class, 'append_to_content' ) );
+		add_action( 'widgets_init', array( self::class, 'register_area' ) );
+		if ( self::is_cocoon_theme() ) {
+			add_action( 'singular_entry_content_after', array( self::class, 'render_content_area_action' ) );
+		} else {
+			add_filter( 'the_content', array( self::class, 'append_to_content' ) );
+		}
 		add_action( 'wp_enqueue_scripts', array( self::class, 'enqueue_front' ) );
 		add_action( 'admin_init', array( self::class, 'maybe_auto_install' ) );
 	}
@@ -34,6 +41,31 @@ final class Sister_Sites {
 			(string) filemtime( $path )
 		);
 	}
+	private static function is_cocoon_theme(): bool {
+		if ( ! function_exists( 'wp_get_theme' ) ) {
+			return false;
+		}
+		$theme    = wp_get_theme();
+		$template = strtolower( (string) $theme->get( 'Template' ) );
+		$name     = strtolower( (string) $theme->get( 'Name' ) );
+		return str_contains( $template, 'cocoon' ) || str_contains( $name, 'cocoon' );
+	}
+	public static function register_area(): void {
+		if ( ! function_exists( 'register_sidebar' ) ) {
+			return;
+		}
+		register_sidebar(
+			array(
+				'name'          => __( '[ガ]コンテンツ下部', GACHIREAI_TEXT_DOMAIN ),
+				'id'            => self::AREA_ID,
+				'description'   => __( 'サイドバーが無いテーマで、姉妹サイトを記事の下部へ表示します。', GACHIREAI_TEXT_DOMAIN ),
+				'before_widget' => '',
+				'after_widget'  => '',
+				'before_title'  => '',
+				'after_title'   => '',
+			)
+		);
+	}
 	public static function append_to_content( $content ) {
 		if ( is_admin() || ! is_multisite() || self::$content_appended ) {
 			return $content;
@@ -45,7 +77,28 @@ final class Sister_Sites {
 			return $content;
 		}
 		self::$content_appended = true;
-		return $content . self::render( __( '姉妹サイト', GACHIREAI_TEXT_DOMAIN ) );
+		return $content . self::render_content_area();
+	}
+	private static function render_content_area(): string {
+		if ( ! function_exists( 'is_active_sidebar' ) || ! function_exists( 'dynamic_sidebar' ) ) {
+			return '';
+		}
+		if ( ! is_active_sidebar( self::AREA_ID ) ) {
+			return '';
+		}
+		ob_start();
+		dynamic_sidebar( self::AREA_ID );
+		return (string) ob_get_clean();
+	}
+	public static function render_content_area_action(): void {
+		if ( ! is_multisite() || self::$content_appended ) {
+			return;
+		}
+		if ( self::MODE_CONTENT !== (string) get_option( self::MODE_OPTION, '' ) ) {
+			return;
+		}
+		self::$content_appended = true;
+		echo self::render_content_area(); 
 	}
 	public static function sites(): array {
 		static $cache = null;
@@ -151,6 +204,7 @@ final class Sister_Sites {
 		if ( ! is_multisite() ) {
 			return;
 		}
+		self::migrate_content_area();
 		if ( self::is_installed() ) {
 			return;
 		}
@@ -158,6 +212,7 @@ final class Sister_Sites {
 			update_option( self::MODE_OPTION, self::MODE_SIDEBAR );
 			return;
 		}
+		self::place_in_content_area();
 		update_option( self::MODE_OPTION, self::MODE_CONTENT );
 	}
 	public static function maybe_auto_install(): void {
@@ -193,6 +248,48 @@ final class Sister_Sites {
 		}
 		return false;
 	}
+	private static function migrate_content_area(): void {
+		if ( get_option( self::AREA_MIGRATED_OPTION ) ) {
+			return;
+		}
+		if ( self::MODE_CONTENT === (string) get_option( self::MODE_OPTION, '' ) ) {
+			self::place_in_content_area();
+		}
+		update_option( self::AREA_MIGRATED_OPTION, '1' );
+	}
+	private static function place_in_content_area(): void {
+		self::place_widget( self::AREA_ID, self::ensure_instance() );
+	}
+	private static function ensure_instance(): int {
+		$option    = 'widget_' . self::WIDGET_ID_BASE;
+		$instances = get_option( $option, array() );
+		if ( ! is_array( $instances ) ) {
+			$instances = array();
+		}
+		foreach ( $instances as $key => $instance ) {
+			if ( is_numeric( $key ) && is_array( $instance ) ) {
+				return (int) $key;
+			}
+		}
+		$index                     = self::free_instance_index( $instances );
+		$instances[ $index ]       = array( 'title' => __( '姉妹サイト', GACHIREAI_TEXT_DOMAIN ) );
+		$instances['_multiwidget'] = 1;
+		update_option( $option, $instances );
+		return $index;
+	}
+	private static function place_widget( string $sidebar_id, int $index ): void {
+		$sidebars = wp_get_sidebars_widgets();
+		if ( ! is_array( $sidebars ) ) {
+			$sidebars = array();
+		}
+		$widgets   = ( isset( $sidebars[ $sidebar_id ] ) && is_array( $sidebars[ $sidebar_id ] ) ) ? $sidebars[ $sidebar_id ] : array();
+		$widget_id = self::WIDGET_ID_BASE . '-' . $index;
+		if ( ! in_array( $widget_id, $widgets, true ) ) {
+			$widgets[] = $widget_id;
+		}
+		$sidebars[ $sidebar_id ] = $widgets;
+		wp_set_sidebars_widgets( $sidebars );
+	}
 	private static function add_to_sidebar(): bool {
 		global $wp_registered_sidebars;
 		$registered = is_array( $wp_registered_sidebars ) ? $wp_registered_sidebars : array();
@@ -200,33 +297,16 @@ final class Sister_Sites {
 		if ( null === $target ) {
 			return false;
 		}
-		$instances = get_option( 'widget_' . self::WIDGET_ID_BASE, array() );
-		if ( ! is_array( $instances ) ) {
-			$instances = array();
-		}
-		$index                     = self::free_instance_index( $instances );
-		$instances[ $index ]       = array( 'title' => __( '姉妹サイト', GACHIREAI_TEXT_DOMAIN ) );
-		$instances['_multiwidget'] = 1;
-		update_option( 'widget_' . self::WIDGET_ID_BASE, $instances );
-		$sidebars = wp_get_sidebars_widgets();
-		if ( ! is_array( $sidebars ) ) {
-			$sidebars = array();
-		}
-		$widgets   = ( isset( $sidebars[ $target ] ) && is_array( $sidebars[ $target ] ) ) ? $sidebars[ $target ] : array();
-		$widget_id = self::WIDGET_ID_BASE . '-' . $index;
-		if ( ! in_array( $widget_id, $widgets, true ) ) {
-			$widgets[] = $widget_id;
-		}
-		$sidebars[ $target ] = $widgets;
-		wp_set_sidebars_widgets( $sidebars );
+		self::place_widget( $target, self::ensure_instance() );
 		return true;
 	}
 	private static function pick_sidebar( array $ids ): ?string {
-		$ids = array_values(
+		$area = self::AREA_ID;
+		$ids  = array_values(
 			array_filter(
 				$ids,
-				static function ( $id ): bool {
-					return is_string( $id ) && '' !== $id && 'wp_inactive_widgets' !== $id;
+				static function ( $id ) use ( $area ): bool {
+					return is_string( $id ) && '' !== $id && 'wp_inactive_widgets' !== $id && $area !== $id;
 				}
 			)
 		);

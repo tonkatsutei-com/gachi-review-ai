@@ -1,6 +1,6 @@
 
 ?$has_title
-<h2 class="gachireai-disclosure-widget__title">{$title}</h2>
+<div class="gachireai-disclosure-widget__title" role="heading" aria-level="2">{$title}</div>
 $has_title?
 ?$disclosure_items
 <div class="gachireai-disclosure">

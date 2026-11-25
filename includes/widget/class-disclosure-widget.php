@@ -8,7 +8,7 @@ final class Disclosure_Widget extends \WP_Widget {
 	{
 		parent::__construct(
 			Disclosure::WIDGET_ID_BASE,
-			__('開示', GACHIREAI_TEXT_DOMAIN),
+			__('[ガ]開示', GACHIREAI_TEXT_DOMAIN),
 			array(
 				'classname'   => 'gachireai-disclosure-widget',
 				'description' => __('アフィリエイト広告・AI生成コンテンツであることを表示します。', GACHIREAI_TEXT_DOMAIN),
